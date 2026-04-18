@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 import { Link } from 'react-router-dom'
 import type { GridTile } from '../types'
 

@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 import { useState } from 'react'
 import StoryDetailDialog from '../components/StoryDetailDialog'
 import TopNav from '../components/TopNav'

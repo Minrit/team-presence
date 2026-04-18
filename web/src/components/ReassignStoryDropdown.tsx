@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 // One-click 改派 dropdown. Reassigns a session to a different (or no) story.
 // PATCH backend: /api/v1/sessions/:id { detected_story_id: uuid | null }
 

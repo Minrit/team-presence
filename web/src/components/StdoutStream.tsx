@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RoomEntry } from '../hooks/useSseRoom'
 

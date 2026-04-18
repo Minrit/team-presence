@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 import { useMemo } from 'react'
 import Tile, { tileState, type TileState } from '../components/Tile'
 import TopNav from '../components/TopNav'

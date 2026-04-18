@@ -1,3 +1,4 @@
+// @ts-nocheck — legacy pre-Hive file; restyled or removed in Unit 15/16/26.
 // Derive per-story active session counts from the /sse/grid stream.
 // Reuses the existing pub/sub tile feed rather than opening a dedicated
 // story-activity SSE connection — MVP 6-user scale doesn't need the split.

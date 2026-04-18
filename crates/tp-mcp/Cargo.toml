@@ -7,7 +7,7 @@ edition.workspace = true
 team-presence-collector = { path = "../collector" }
 
 rmcp = { version = "1.5", features = ["server", "transport-io", "macros", "schemars"] }
-schemars = "0.8"
+schemars = "1"
 
 serde.workspace = true
 serde_json.workspace = true

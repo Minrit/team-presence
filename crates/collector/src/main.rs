@@ -1,6 +1,6 @@
 use clap::Parser;
 use team_presence_collector::{
-    cli::{Cli, Command, InstallHooksArgs, LoginArgs},
+    cli::{Cli, Command, InstallHooksArgs, LoginArgs, StartArgs},
     client::ApiClient,
     config, consent, credentials, hooks, mute, start, telemetry,
 };
@@ -12,7 +12,7 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Login(args) => cmd_login(args).await?,
-        Command::Start => cmd_start().await?,
+        Command::Start(args) => cmd_start(args).await?,
         Command::Status => cmd_status()?,
         Command::Mute => {
             mute::mute()?;
@@ -73,13 +73,13 @@ async fn cmd_login(args: LoginArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn cmd_start() -> anyhow::Result<()> {
+async fn cmd_start(args: StartArgs) -> anyhow::Result<()> {
     let creds = credentials::load()?.ok_or_else(|| {
         anyhow::anyhow!(
             "no credentials — run `team-presence login --server <url> --email <you>` first"
         )
     })?;
-    start::run(creds).await
+    start::run(creds, args.agent.into_wire()).await
 }
 
 fn cmd_status() -> anyhow::Result<()> {

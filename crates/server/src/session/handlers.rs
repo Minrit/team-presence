@@ -28,7 +28,7 @@ pub struct ReassignRequest {
 pub struct SessionListItem {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub cli: String,
+    pub agent_kind: String,
     pub cwd: String,
     pub detected_story_id: Option<Uuid>,
     pub started_at: chrono::DateTime<chrono::Utc>,
@@ -45,7 +45,7 @@ pub async fn list_active(
             .map(|m| SessionListItem {
                 id: m.id,
                 user_id: m.user_id,
-                cli: m.cli,
+                agent_kind: m.agent_kind,
                 cwd: m.cwd,
                 detected_story_id: m.detected_story_id,
                 started_at: m.started_at,
@@ -88,7 +88,7 @@ pub async fn reassign(
     Ok(Json(SessionListItem {
         id: meta.id,
         user_id: meta.user_id,
-        cli: meta.cli,
+        agent_kind: meta.agent_kind,
         cwd: meta.cwd,
         detected_story_id: meta.detected_story_id,
         started_at: meta.started_at,

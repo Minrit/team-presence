@@ -21,7 +21,7 @@ pub enum Command {
 
     /// Start the collector daemon: listen for claude-code hook events,
     /// tail transcripts, stream frames to the server over WebSocket.
-    Start,
+    Start(StartArgs),
 
     /// Print current configuration + credential state.
     Status,
@@ -61,6 +61,50 @@ pub struct LoginArgs {
     /// consent was captured out-of-band).
     #[arg(long)]
     pub yes: bool,
+}
+
+#[derive(Debug, clap::Args, Default)]
+pub struct StartArgs {
+    /// Which agent runtime is being tailed. Only `claude_code` has a real
+    /// capture path in MVP; the others are wire-compatible stubs for the
+    /// frontend AgentChip.
+    #[arg(long, value_parser = parse_agent_kind, default_value = "claude_code")]
+    pub agent: AgentKindArg,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AgentKindArg {
+    #[default]
+    ClaudeCode,
+    Cursor,
+    Codex,
+    Aider,
+    Local,
+}
+
+impl AgentKindArg {
+    pub fn into_wire(self) -> team_presence_shared_types::AgentKind {
+        match self {
+            Self::ClaudeCode => team_presence_shared_types::AgentKind::ClaudeCode,
+            Self::Cursor => team_presence_shared_types::AgentKind::Cursor,
+            Self::Codex => team_presence_shared_types::AgentKind::Codex,
+            Self::Aider => team_presence_shared_types::AgentKind::Aider,
+            Self::Local => team_presence_shared_types::AgentKind::Local,
+        }
+    }
+}
+
+fn parse_agent_kind(s: &str) -> Result<AgentKindArg, String> {
+    match s {
+        "claude_code" => Ok(AgentKindArg::ClaudeCode),
+        "cursor" => Ok(AgentKindArg::Cursor),
+        "codex" => Ok(AgentKindArg::Codex),
+        "aider" => Ok(AgentKindArg::Aider),
+        "local" => Ok(AgentKindArg::Local),
+        other => Err(format!(
+            "unknown agent '{other}' — expected claude_code|cursor|codex|aider|local"
+        )),
+    }
 }
 
 #[derive(Debug, clap::Args)]

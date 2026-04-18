@@ -12,7 +12,7 @@ pub async fn upsert_session_start(
     session_id: Uuid,
     collector_token_id: Uuid,
     user_id: Uuid,
-    cli: &str,
+    agent_kind: &str,
     cwd: &str,
     git_remote: Option<&str>,
     git_branch: Option<&str>,
@@ -21,7 +21,7 @@ pub async fn upsert_session_start(
     sqlx::query_as::<_, SessionMeta>(
         r#"
         INSERT INTO sessions_meta (
-            id, collector_token_id, user_id, cli, cwd, git_remote, git_branch,
+            id, collector_token_id, user_id, agent_kind, cwd, git_remote, git_branch,
             started_at, last_heartbeat_at, last_activity_at
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
@@ -37,7 +37,7 @@ pub async fn upsert_session_start(
     .bind(session_id)
     .bind(collector_token_id)
     .bind(user_id)
-    .bind(cli)
+    .bind(agent_kind)
     .bind(cwd)
     .bind(git_remote)
     .bind(git_branch)

@@ -22,7 +22,7 @@ use axum::{
 use futures_util::{SinkExt, StreamExt};
 use std::borrow::Cow;
 use std::time::Duration;
-use team_presence_shared_types::{CliKind, Frame};
+use team_presence_shared_types::Frame;
 use uuid::Uuid;
 
 use crate::{
@@ -217,15 +217,13 @@ async fn handle_text(state: &AppState, auth: &CollectorAuth, text: &str) -> Opti
             transcript_path: _,
             started_at,
         } => {
-            let cli_str = match cli {
-                CliKind::ClaudeCode => "claude_code",
-            };
+            let kind_str = cli.as_str();
             let upsert = upsert_session_start(
                 &state.db,
                 *session_id,
                 auth.collector_token_id,
                 auth.user_id,
-                cli_str,
+                kind_str,
                 cwd,
                 git_remote.as_deref(),
                 git_branch.as_deref(),

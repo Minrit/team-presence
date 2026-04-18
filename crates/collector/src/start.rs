@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 
 use chrono::Utc;
-use team_presence_shared_types::{CliKind, Frame};
+use team_presence_shared_types::{AgentKind, Frame};
 use tokio::sync::mpsc;
 
 use crate::capture::{hook_socket, session_uuid, transcript::Tailer, HookEvent};
@@ -18,7 +18,7 @@ use crate::ws_client;
 
 const FRAME_CHANNEL_CAPACITY: usize = 8192;
 
-pub async fn run(creds: Credentials) -> anyhow::Result<()> {
+pub async fn run(creds: Credentials, agent_kind: AgentKind) -> anyhow::Result<()> {
     let socket_path = config::hook_socket_path();
     let listener = hook_socket::bind(&socket_path)?;
     let (hook_tx, mut hook_rx) = mpsc::channel::<HookEvent>(64);
@@ -87,7 +87,7 @@ pub async fn run(creds: Credentials) -> anyhow::Result<()> {
                 let _ = frame_tx
                     .send(Frame::SessionStart {
                         session_id,
-                        cli: CliKind::ClaudeCode,
+                        cli: agent_kind,
                         cwd: cwd.clone(),
                         git_remote: None,
                         git_branch: None,
@@ -127,7 +127,7 @@ pub async fn run(creds: Credentials) -> anyhow::Result<()> {
 /// reference "offline mode" still compile; `TP_OFFLINE=1` is the switch.
 pub async fn run_offline(creds: Credentials) -> anyhow::Result<()> {
     std::env::set_var("TP_OFFLINE", "1");
-    run(creds).await
+    run(creds, AgentKind::ClaudeCode).await
 }
 
 fn spawn_offline_sink(mut frame_rx: mpsc::Receiver<Frame>) {

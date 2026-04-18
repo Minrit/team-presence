@@ -48,7 +48,7 @@ export default function ReassignStoryDropdown({
         <option value="">— unassigned —</option>
         {stories?.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.title}
+            {s.name}
           </option>
         ))}
       </select>

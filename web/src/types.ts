@@ -12,28 +12,25 @@ export interface User {
 
 export interface Story {
   id: string
-  title: string
+  name: string
   description: string
+  acceptance_criteria: string
   status: StoryStatus
   owner_id: string | null
   repo: string | null
+  sprint_id: string | null
   last_modified_by: string
   created_at: string
   updated_at: string
 }
 
-export interface Task {
+export interface Sprint {
   id: string
-  story_id: string
-  title: string
-  done_at: string | null
-  position: number
+  name: string
+  start_date: string // YYYY-MM-DD
+  end_date: string
   created_at: string
   updated_at: string
-}
-
-export interface StoryWithTasks extends Story {
-  tasks: Task[]
 }
 
 export const STATUSES: StoryStatus[] = ['todo', 'doing', 'done']
@@ -58,6 +55,16 @@ export interface GridTile {
   last_activity_at: string
   ended_at: string | null
   muted: boolean
+}
+
+export interface SessionMetaLite {
+  id: string
+  user_id: string
+  cli: string
+  cwd: string
+  detected_story_id: string | null
+  started_at: string
+  ended_at: string | null
 }
 
 export type RoomFrame =

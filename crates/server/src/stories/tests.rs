@@ -51,3 +51,23 @@ fn patch_repo_tristate_same_shape() {
     let req: PatchStoryRequest = serde_json::from_str(r#"{"repo": "foo/bar"}"#).unwrap();
     assert!(matches!(req.repo, Some(Some(ref s)) if s == "foo/bar"));
 }
+
+#[test]
+fn patch_sprint_id_tristate() {
+    let req: PatchStoryRequest = serde_json::from_str(r#"{}"#).unwrap();
+    assert!(req.sprint_id.is_none());
+    let req: PatchStoryRequest = serde_json::from_str(r#"{"sprint_id": null}"#).unwrap();
+    assert!(matches!(req.sprint_id, Some(None)));
+    let uid = "00000000-0000-0000-0000-000000000099";
+    let req: PatchStoryRequest =
+        serde_json::from_str(&format!(r#"{{"sprint_id": "{uid}"}}"#)).unwrap();
+    assert!(matches!(req.sprint_id, Some(Some(_))));
+}
+
+#[test]
+fn create_accepts_title_alias_for_name() {
+    use super::model::CreateStoryRequest;
+    let req: CreateStoryRequest =
+        serde_json::from_str(r#"{"title":"legacy client"}"#).unwrap();
+    assert_eq!(req.name.as_deref(), Some("legacy client"));
+}

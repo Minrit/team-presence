@@ -1,13 +1,9 @@
-import { useEffect, useState } from 'react'
-import {
-  createTask,
-  deleteStory,
-  deleteTask,
-  patchStory,
-  patchTask,
-  useStory,
-} from '../stories'
-import { STATUSES, STATUS_LABEL, type StoryStatus } from '../types'
+import { useEffect, useMemo, useState } from 'react'
+import { deleteStory, patchStory, useStory } from '../stories'
+import { useSprints } from '../sprints'
+import { useStoryActivity } from '../hooks/useStoryActivity'
+import { STATUSES, STATUS_LABEL, type Sprint, type Story, type StoryStatus } from '../types'
+import { Link } from 'react-router-dom'
 
 export interface StoryDetailDialogProps {
   storyId: string
@@ -16,19 +12,26 @@ export interface StoryDetailDialogProps {
 
 export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialogProps) {
   const { data, error, isLoading } = useStory(storyId)
-  const [title, setTitle] = useState('')
+  const { data: sprints } = useSprints()
+  const activity = useStoryActivity()
+
+  const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [acceptance, setAcceptance] = useState('')
   const [repo, setRepo] = useState('')
   const [status, setStatus] = useState<StoryStatus>('todo')
-  const [newTask, setNewTask] = useState('')
+  const [sprintId, setSprintId] = useState<string>('')
   const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (data) {
-      setTitle(data.title)
+      setName(data.name)
       setDescription(data.description)
+      setAcceptance(data.acceptance_criteria)
       setRepo(data.repo ?? '')
       setStatus(data.status)
+      setSprintId(data.sprint_id ?? '')
     }
   }, [data])
 
@@ -40,32 +43,46 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const patchField = async <K extends 'title' | 'description' | 'repo' | 'status',>(
-    field: K,
-    value: string,
-  ) => {
+  const patchField = async (body: Record<string, unknown>) => {
     if (!data) return
     setSaving(true)
     try {
-      await patchStory(storyId, {
-        [field]: field === 'repo' ? (value.trim() === '' ? null : value) : value,
-      } as Record<string, unknown>)
+      await patchStory(storyId, body)
     } finally {
       setSaving(false)
     }
   }
 
-  const addTask = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTask.trim()) return
-    await createTask(storyId, { title: newTask.trim() })
-    setNewTask('')
-  }
-
   const onDelete = async () => {
-    if (!confirm('Delete this story and all its tasks?')) return
+    if (!confirm('Delete this story?')) return
     await deleteStory(storyId)
     onClose()
+  }
+
+  const linkedSessions = useMemo(
+    () => (data ? activity.get(data.id)?.session_ids ?? [] : []),
+    [activity, data],
+  )
+
+  const copyAsMd = async () => {
+    if (!data) return
+    const sprint = sprints?.find((s) => s.id === data.sprint_id) ?? null
+    const md = storyToMarkdown(data, sprint, linkedSessions)
+    try {
+      await navigator.clipboard.writeText(md)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2_000)
+    } catch {
+      // fallback: dump into a hidden textarea
+      const ta = document.createElement('textarea')
+      ta.value = md
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2_000)
+    }
   }
 
   return (
@@ -82,14 +99,23 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
           <span className="text-xs text-muted">
             {saving ? 'Saving…' : `Updated ${data ? new Date(data.updated_at).toLocaleString() : ''}`}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-muted hover:text-fg"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={copyAsMd}
+              className="text-xs rounded bg-border/40 hover:bg-border/60 px-2 py-1"
+            >
+              {copied ? 'copied!' : 'copy as markdown'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-muted hover:text-fg"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
         </header>
 
         {isLoading && <div className="p-8 text-center text-muted">Loading…</div>}
@@ -99,13 +125,13 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
           <div className="p-4 space-y-5">
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               onBlur={() => {
-                if (title.trim() && title !== data.title) patchField('title', title.trim())
+                if (name.trim() && name !== data.name) patchField({ name: name.trim() })
               }}
               className="input text-lg font-semibold"
-              aria-label="Story title"
+              aria-label="Story name"
             />
 
             <div className="flex items-center gap-3 flex-wrap">
@@ -116,7 +142,7 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
                   onChange={(e) => {
                     const v = e.target.value as StoryStatus
                     setStatus(v)
-                    patchField('status', v)
+                    patchField({ status: v })
                   }}
                   className="ml-2 input-inline"
                 >
@@ -127,7 +153,28 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
                   ))}
                 </select>
               </label>
-              <label className="text-sm text-muted flex-1">
+
+              <label className="text-sm text-muted">
+                Sprint
+                <select
+                  value={sprintId}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setSprintId(v)
+                    patchField({ sprint_id: v === '' ? null : v })
+                  }}
+                  className="ml-2 input-inline"
+                >
+                  <option value="">— none —</option>
+                  {(sprints ?? []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm text-muted flex-1 min-w-[200px]">
                 Repo
                 <input
                   type="text"
@@ -135,7 +182,7 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
                   value={repo}
                   onChange={(e) => setRepo(e.target.value)}
                   onBlur={() => {
-                    if ((data.repo ?? '') !== repo) patchField('repo', repo)
+                    if ((data.repo ?? '') !== repo) patchField({ repo: repo.trim() === '' ? null : repo })
                   }}
                   className="ml-2 input-inline"
                 />
@@ -148,53 +195,50 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => {
-                  if (description !== data.description) patchField('description', description)
+                  if (description !== data.description) patchField({ description })
                 }}
-                rows={6}
+                rows={5}
                 className="input font-mono text-sm"
-                placeholder="Markdown — no preview in MVP"
+                placeholder="Markdown"
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold">Tasks</h3>
-                <span className="text-xs text-muted">
-                  {data.tasks.filter((t) => t.done_at).length} / {data.tasks.length} done
-                </span>
-              </div>
-              <ul className="space-y-1 mb-2">
-                {data.tasks.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={!!t.done_at}
-                      onChange={(e) => patchTask(t.id, storyId, { done: e.target.checked })}
-                    />
-                    <span className={t.done_at ? 'line-through text-muted' : ''}>{t.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => deleteTask(t.id, storyId)}
-                      className="ml-auto text-xs text-muted hover:text-red-500"
-                      aria-label="Delete task"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <form onSubmit={addTask} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  placeholder="Add a task…"
-                  className="input flex-1"
-                />
-                <button type="submit" className="btn-primary px-3">
-                  Add
-                </button>
-              </form>
+              <label className="text-sm text-muted block mb-1">Acceptance criteria</label>
+              <textarea
+                value={acceptance}
+                onChange={(e) => setAcceptance(e.target.value)}
+                onBlur={() => {
+                  if (acceptance !== data.acceptance_criteria)
+                    patchField({ acceptance_criteria: acceptance })
+                }}
+                rows={5}
+                className="input font-mono text-sm"
+                placeholder="- [ ] given X, when Y, then Z"
+              />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Live sessions</h3>
+              {linkedSessions.length === 0 ? (
+                <p className="text-xs text-muted">No sessions are currently linked to this story.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {linkedSessions.map((sid) => (
+                    <li key={sid} className="text-xs flex items-center gap-2">
+                      <span className="inline-block size-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="font-mono">{sid.slice(0, 8)}</span>
+                      <Link
+                        to={`/room/${sid}`}
+                        onClick={onClose}
+                        className="text-accent hover:underline ml-auto"
+                      >
+                        watch →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <footer className="flex justify-end pt-3 border-t border-border">
@@ -211,4 +255,30 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
       </div>
     </div>
   )
+}
+
+function storyToMarkdown(
+  story: Story,
+  sprint: Sprint | null,
+  sessionIds: string[],
+): string {
+  const parts: string[] = []
+  parts.push(`# ${story.name}`)
+  parts.push('')
+  parts.push(`**Status:** ${STATUS_LABEL[story.status]}`)
+  if (sprint) parts.push(`**Sprint:** ${sprint.name} (${sprint.start_date} → ${sprint.end_date})`)
+  if (story.repo) parts.push(`**Repo:** ${story.repo}`)
+  parts.push(`**Last updated:** ${new Date(story.updated_at).toLocaleString()}`)
+  parts.push('')
+  parts.push('## Description')
+  parts.push(story.description || '_(empty)_')
+  parts.push('')
+  parts.push('## Acceptance Criteria')
+  parts.push(story.acceptance_criteria || '_(none)_')
+  if (sessionIds.length > 0) {
+    parts.push('')
+    parts.push('## Active sessions')
+    for (const sid of sessionIds) parts.push(`- ${sid}`)
+  }
+  return parts.join('\n') + '\n'
 }

@@ -60,9 +60,9 @@ export default function Kanban() {
   }
 
   const createInColumn = async (status: StoryStatus) => {
-    const title = prompt('Story title')?.trim()
-    if (!title) return
-    const s = await createStory({ title, status })
+    const name = prompt('Story name')?.trim()
+    if (!name) return
+    const s = await createStory({ name, status })
     setOpenId(s.id)
   }
 

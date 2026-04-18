@@ -15,7 +15,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::model::{Story, StoryStatus};
-use super::repo::{self, DESCRIPTION_MAX_BYTES, TITLE_MAX_BYTES};
+use super::repo::{self, FIELD_MAX_BYTES as DESCRIPTION_MAX_BYTES, NAME_MAX_BYTES as TITLE_MAX_BYTES};
 use crate::error::AppError;
 
 /// File size cap. Mirrors `DESCRIPTION_MAX_BYTES` from Unit 3 so an imported
@@ -234,7 +234,7 @@ pub async fn apply_one(
 ) -> Result<ApplyOutcome, AppError> {
     if dedup_by_title {
         let existing: Option<(Uuid,)> =
-            sqlx::query_as("SELECT id FROM stories WHERE title = $1 LIMIT 1")
+            sqlx::query_as("SELECT id FROM stories WHERE name = $1 LIMIT 1")
                 .bind(&parsed.title)
                 .fetch_optional(db)
                 .await?;
@@ -255,8 +255,10 @@ pub async fn apply_one(
         actor,
         &parsed.title,
         &parsed.description,
+        "", // acceptance_criteria blank on import; bmad rarely has it
         parsed.status,
         owner_id,
+        None,
         None,
     )
     .await?;

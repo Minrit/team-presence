@@ -50,7 +50,7 @@ pub async fn resolve_story_id(
     for tok in tokens {
         let pat = format!("%{tok}%");
         let row: Option<(Uuid,)> = sqlx::query_as(
-            "SELECT id FROM stories WHERE title ILIKE $1 ORDER BY created_at ASC LIMIT 1",
+            "SELECT id FROM stories WHERE name ILIKE $1 ORDER BY created_at ASC LIMIT 1",
         )
         .bind(&pat)
         .fetch_optional(db)

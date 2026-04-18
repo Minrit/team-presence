@@ -4,30 +4,37 @@ use axum::{
 };
 use uuid::Uuid;
 
-use super::model::{
-    CreateStoryRequest, ListStoriesQuery, PatchStoryRequest, Story, StoryStatus, StoryWithTasks,
-};
-use super::repo::{self, DESCRIPTION_MAX_BYTES, TITLE_MAX_BYTES};
-use crate::{auth::model::Identity, error::AppError, state::AppState, tasks::repo as task_repo};
+use super::model::{CreateStoryRequest, ListStoriesQuery, PatchStoryRequest, Story, StoryStatus};
+use super::repo::{self, FIELD_MAX_BYTES, NAME_MAX_BYTES};
+use crate::{auth::model::Identity, error::AppError, state::AppState};
 
 pub async fn create(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
     Json(req): Json<CreateStoryRequest>,
 ) -> Result<Json<Story>, AppError> {
-    validate_title(&req.title)?;
+    let name = req
+        .name
+        .as_deref()
+        .map(str::trim)
+        .ok_or_else(|| AppError::BadRequest("name required".into()))?;
+    validate_name(name)?;
+
     let desc = req.description.unwrap_or_default();
-    if desc.len() > DESCRIPTION_MAX_BYTES {
-        return Err(AppError::BadRequest("description too large".into()));
-    }
+    let ac = req.acceptance_criteria.unwrap_or_default();
+    validate_body(&desc, "description")?;
+    validate_body(&ac, "acceptance_criteria")?;
+
     let story = repo::create(
         &state.db,
         identity.user_id,
-        req.title.trim(),
+        name,
         &desc,
+        &ac,
         req.status.unwrap_or(StoryStatus::Todo),
         req.owner_id,
         req.repo.as_deref(),
+        req.sprint_id,
     )
     .await?;
     Ok(Json(story))
@@ -45,10 +52,9 @@ pub async fn get_one(
     State(state): State<AppState>,
     Extension(_identity): Extension<Identity>,
     Path(id): Path<Uuid>,
-) -> Result<Json<StoryWithTasks>, AppError> {
+) -> Result<Json<Story>, AppError> {
     let story = repo::get(&state.db, id).await?.ok_or(AppError::NotFound)?;
-    let tasks = task_repo::list_by_story(&state.db, id).await?;
-    Ok(Json(StoryWithTasks { story, tasks }))
+    Ok(Json(story))
 }
 
 pub async fn patch(
@@ -57,24 +63,27 @@ pub async fn patch(
     Path(id): Path<Uuid>,
     Json(req): Json<PatchStoryRequest>,
 ) -> Result<Json<Story>, AppError> {
-    if let Some(t) = &req.title {
-        validate_title(t)?;
+    if let Some(n) = &req.name {
+        validate_name(n.trim())?;
     }
     if let Some(d) = &req.description {
-        if d.len() > DESCRIPTION_MAX_BYTES {
-            return Err(AppError::BadRequest("description too large".into()));
-        }
+        validate_body(d, "description")?;
+    }
+    if let Some(a) = &req.acceptance_criteria {
+        validate_body(a, "acceptance_criteria")?;
     }
 
     let story = repo::patch(
         &state.db,
         id,
         identity.user_id,
-        req.title.as_deref().map(str::trim),
+        req.name.as_deref().map(str::trim),
         req.description.as_deref(),
+        req.acceptance_criteria.as_deref(),
         req.status,
         req.owner_id,
         req.repo.as_ref().map(|o| o.as_deref()),
+        req.sprint_id,
     )
     .await?
     .ok_or(AppError::NotFound)?;
@@ -93,13 +102,19 @@ pub async fn delete(
     Ok(())
 }
 
-fn validate_title(title: &str) -> Result<(), AppError> {
-    let t = title.trim();
-    if t.is_empty() {
-        return Err(AppError::BadRequest("title required".into()));
+fn validate_name(name: &str) -> Result<(), AppError> {
+    if name.is_empty() {
+        return Err(AppError::BadRequest("name required".into()));
     }
-    if t.len() > TITLE_MAX_BYTES {
-        return Err(AppError::BadRequest("title too long".into()));
+    if name.len() > NAME_MAX_BYTES {
+        return Err(AppError::BadRequest("name too long".into()));
+    }
+    Ok(())
+}
+
+fn validate_body(body: &str, field: &'static str) -> Result<(), AppError> {
+    if body.len() > FIELD_MAX_BYTES {
+        return Err(AppError::BadRequest(format!("{field} too large")));
     }
     Ok(())
 }

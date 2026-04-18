@@ -2,8 +2,15 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth'
 
 export interface TopNavProps {
-  current: 'kanban' | 'live'
+  current: 'kanban' | 'live' | 'stories' | 'sprints'
 }
+
+const TABS: { key: TopNavProps['current']; to: string; label: string }[] = [
+  { key: 'kanban', to: '/', label: 'Kanban' },
+  { key: 'stories', to: '/stories', label: 'Stories' },
+  { key: 'sprints', to: '/sprints', label: 'Sprints' },
+  { key: 'live', to: '/live', label: 'Live' },
+]
 
 export default function TopNav({ current }: TopNavProps) {
   const { user, signOut } = useAuth()
@@ -14,18 +21,15 @@ export default function TopNav({ current }: TopNavProps) {
           team-presence
         </Link>
         <nav className="text-sm text-muted flex gap-4">
-          <Link
-            to="/"
-            className={current === 'kanban' ? 'text-fg' : 'hover:text-fg'}
-          >
-            Kanban
-          </Link>
-          <Link
-            to="/live"
-            className={current === 'live' ? 'text-fg' : 'hover:text-fg'}
-          >
-            Live
-          </Link>
+          {TABS.map((t) => (
+            <Link
+              key={t.key}
+              to={t.to}
+              className={current === t.key ? 'text-fg' : 'hover:text-fg'}
+            >
+              {t.label}
+            </Link>
+          ))}
         </nav>
       </div>
       <div className="text-sm text-muted flex items-center gap-3">

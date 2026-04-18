@@ -2,10 +2,10 @@ pub mod auth;
 pub mod collectors;
 pub mod error;
 pub mod session;
+pub mod sprints;
 pub mod sse;
 pub mod state;
 pub mod stories;
-pub mod tasks;
 pub mod telemetry;
 pub mod ws;
 
@@ -34,11 +34,16 @@ pub fn build_router(state: AppState) -> Router {
                 .patch(stories::handlers::patch)
                 .delete(stories::handlers::delete),
         )
-        // Tasks CRUD (nested under story for create, flat for patch/delete)
-        .route("/api/v1/stories/:id/tasks", post(tasks::handlers::create))
+        // Sprints CRUD
         .route(
-            "/api/v1/tasks/:id",
-            patch(tasks::handlers::patch).delete(tasks::handlers::delete),
+            "/api/v1/sprints",
+            post(sprints::handlers::create).get(sprints::handlers::list),
+        )
+        .route(
+            "/api/v1/sprints/:id",
+            get(sprints::handlers::get_one)
+                .patch(sprints::handlers::patch)
+                .delete(sprints::handlers::delete),
         )
         // Sessions metadata (for 改派 reassign and list-active)
         .route("/api/v1/sessions", get(sessions::list_active))

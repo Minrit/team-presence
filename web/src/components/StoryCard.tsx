@@ -48,7 +48,7 @@ export default function StoryCard({ story, onOpen, activity }: StoryCardProps) {
               {active > 1 ? `LIVE · ${active}` : 'LIVE'}
             </span>
           )}
-          <p className="font-medium text-sm leading-tight break-words">{story.title}</p>
+          <p className="font-medium text-sm leading-tight break-words">{story.name}</p>
         </div>
         <div className="flex items-center gap-2 mt-2 text-xs text-muted">
           {story.repo && (

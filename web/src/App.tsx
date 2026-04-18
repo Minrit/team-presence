@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './auth'
 import Kanban from './pages/Kanban'
 import Grid from './pages/Grid'
 import Room from './pages/Room'
+import Stories from './pages/Stories'
+import Sprints from './pages/Sprints'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -26,6 +28,22 @@ export default function App() {
             element={
               <Protected>
                 <Grid />
+              </Protected>
+            }
+          />
+          <Route
+            path="/stories"
+            element={
+              <Protected>
+                <Stories />
+              </Protected>
+            }
+          />
+          <Route
+            path="/sprints"
+            element={
+              <Protected>
+                <Sprints />
               </Protected>
             }
           />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../design/Button'
 import { Card } from '../design/Card'
 import { Icon } from '../design/Icon'
+import { InstallCommandCard } from '../design/InstallCommandCard'
 import { MarkdownView } from '../design/MarkdownView'
 
 /** Renders /public/agent-setup.md inside the shell, with a download
@@ -44,6 +45,8 @@ export default function AgentSetup() {
         maxWidth: 900,
       }}
     >
+      <InstallCommandCard />
+
       <Card
         style={{
           padding: 14,

@@ -1,5 +1,6 @@
 import { Card } from '../design/Card'
 import { Icon } from '../design/Icon'
+import { InstallCommandCard } from '../design/InstallCommandCard'
 import { Kbd } from '../design/Kbd'
 
 /** Read-only onboarding guide. All four setup steps now flow through the
@@ -15,6 +16,11 @@ export default function Connect() {
         maxWidth: 820,
       }}
     >
+      <InstallCommandCard
+        title="First step: install tp-mcp"
+        hint="Run this on any macOS or Linux laptop to pull the pre-built tp-mcp binary from this server (sha256 checked, dropped at ~/.local/bin). After it finishes, open Claude Code and run /tp-connect-machine to log in + wire hooks + start the collector."
+      />
+
       <div
         style={{
           display: 'flex',

@@ -10,3 +10,8 @@ build/
 .vscode/
 .idea/
 *.tsbuildinfo
+
+# Release artifacts built by scripts/build-release-binaries.sh.
+# The directory itself is tracked via downloads/.gitkeep.
+downloads/tp-mcp-*
+downloads/manifest.json

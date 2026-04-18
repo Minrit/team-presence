@@ -79,7 +79,7 @@ async fn cmd_start() -> anyhow::Result<()> {
             "no credentials — run `team-presence login --server <url> --email <you>` first"
         )
     })?;
-    start::run_offline(creds).await
+    start::run(creds).await
 }
 
 fn cmd_status() -> anyhow::Result<()> {

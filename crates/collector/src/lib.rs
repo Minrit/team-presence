@@ -14,10 +14,12 @@ pub mod client;
 pub mod config;
 pub mod consent;
 pub mod credentials;
+pub mod heartbeat;
 pub mod hooks;
 pub mod mute;
 pub mod start;
 pub mod telemetry;
+pub mod ws_client;
 
 #[cfg(test)]
 pub mod test_support;

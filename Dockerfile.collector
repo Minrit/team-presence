@@ -1,0 +1,12 @@
+# The collector is primarily installed on developer laptops, not containerized.
+# This Dockerfile exists for CI builds of the collector binary (artifact only).
+FROM rust:1.83 AS builder
+WORKDIR /app
+COPY . .
+RUN cargo build --release -p team-presence-collector && \
+    cp target/release/team-presence /team-presence
+
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /team-presence /usr/local/bin/team-presence
+ENTRYPOINT ["/usr/local/bin/team-presence"]

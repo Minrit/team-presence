@@ -1,9 +1,13 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import { AppShell } from './shell/AppShell'
+import Backlog from './pages/Backlog'
 import Board from './pages/Board'
+import Compute from './pages/Compute'
+import Connect from './pages/Connect'
 import CurrentStory from './pages/CurrentStory'
 import Kanban from './pages/Kanban'
+import Stream from './pages/Stream'
 import Grid from './pages/Grid'
 import Room from './pages/Room'
 import Stories from './pages/Stories'
@@ -23,24 +27,8 @@ export default function App() {
             <Route path="/" element={<Board />} />
             <Route path="/board" element={<Board />} />
             <Route path="/story/:id" element={<CurrentStory />} />
-            <Route
-              path="/backlog"
-              element={
-                <Placeholder
-                  title="Backlog"
-                  hint="Claim panel for unassigned todos. Unit 17 ships this."
-                />
-              }
-            />
-            <Route
-              path="/stream"
-              element={
-                <Placeholder
-                  title="Team stream"
-                  hint="Terminal wall with agent-kind filters. Unit 18 ships this."
-                />
-              }
-            />
+            <Route path="/backlog" element={<Backlog />} />
+            <Route path="/stream" element={<Stream />} />
             <Route
               path="/members"
               element={
@@ -50,15 +38,7 @@ export default function App() {
                 />
               }
             />
-            <Route
-              path="/compute"
-              element={
-                <Placeholder
-                  title="Compute"
-                  hint="Per-machine node cards. Unit 21 ships this."
-                />
-              }
-            />
+            <Route path="/compute" element={<Compute />} />
             <Route
               path="/overview"
               element={
@@ -68,15 +48,7 @@ export default function App() {
                 />
               }
             />
-            <Route
-              path="/connect"
-              element={
-                <Placeholder
-                  title="Connect"
-                  hint="4-step onboarding wizard. Unit 22 ships this."
-                />
-              }
-            />
+            <Route path="/connect" element={<Connect />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/stories" element={<Stories />} />
             <Route path="/sprints" element={<Sprints />} />

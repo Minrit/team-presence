@@ -4,6 +4,7 @@ import useSWR from 'swr'
 import { api } from '../api'
 import { AgentChip } from '../design/AgentChip'
 import { Card } from '../design/Card'
+import { MarkdownView } from '../design/MarkdownView'
 import { Priority } from '../design/Priority'
 import { ProgressBar } from '../design/ProgressBar'
 import { StatusPill } from '../design/StatusPill'
@@ -157,17 +158,7 @@ export default function CurrentStory() {
             )}
           </div>
           <div style={{ font: '600 20px/1.3 var(--font)' }}>{story.name}</div>
-          {story.description && (
-            <div
-              style={{
-                font: '400 13px/1.55 var(--font)',
-                color: 'var(--fg-2)',
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {story.description}
-            </div>
-          )}
+          {story.description && <MarkdownView source={story.description} />}
         </Card>
 
         {/* AC checklist — display only */}

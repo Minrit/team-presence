@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "team-presence": {
+      "command": "./target/debug/tp-mcp",
+      "args": [],
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "TP_MCP_LOG": "info"
+      }
+    }
+  }
+}

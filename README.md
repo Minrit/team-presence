@@ -1,9 +1,12 @@
 # team-presence
 
-Internal team tool: Kanban + claude-code live-streaming Grid for a 6-person team.
+Internal team tool: **read-only board** of teammates' active Claude
+Code sessions + stories, driven entirely by an MCP toolchain. The
+browser observes; Claude Code (via the seven `/tp-*` skills) does the
+work.
 
-**Status:** Unit 1 scaffold. See implementation plan at
-`ai-native-workspace/docs/plans/2026-04-18-006-feat-team-presence-tool-plan.md`.
+**Status:** AI-native refactor complete (plan 009). See
+[`docs/ai-native.md`](docs/ai-native.md) for the full usage guide.
 
 ## Quick start
 

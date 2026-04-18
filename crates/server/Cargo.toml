@@ -44,3 +44,7 @@ path = "src/main.rs"
 [[bin]]
 name = "import-bmad"
 path = "src/bin/import_bmad.rs"
+
+[[bin]]
+name = "reset-pw"
+path = "src/bin/reset_pw.rs"

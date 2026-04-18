@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod collectors;
+pub mod comments;
 pub mod epics;
 pub mod error;
 pub mod session;
@@ -73,9 +74,15 @@ pub fn build_router(state: AppState) -> Router {
         // Sessions metadata (for 改派 reassign and list-active)
         .route("/api/v1/sessions", get(sessions::list_active))
         .route("/api/v1/sessions/:id", patch(sessions::reassign))
+        // Comments (Unit 11)
+        .route(
+            "/api/v1/stories/:id/comments",
+            get(comments::handlers::list).post(comments::handlers::create),
+        )
         // Viewer SSE (browser JWT Bearer)
         .route("/sse/room/:session_id", get(sse::room::handler))
         .route("/sse/grid", get(sse::grid::handler))
+        .route("/sse/story/:id/activity", get(sse::activity::handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_identity,

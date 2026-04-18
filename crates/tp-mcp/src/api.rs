@@ -25,10 +25,26 @@ pub struct ApiClient {
 
 impl ApiClient {
     /// Load credentials saved by the collector (`team-presence login`).
+    ///
+    /// tp-mcp reads the **file fallback directly** (skipping the OS keyring)
+    /// so spawning the binary does not trigger a macOS Keychain "allow
+    /// tp-mcp to use your keychain" dialog every time. The secret itself
+    /// is the same; we're just choosing where to read it from.
     pub fn from_credentials() -> McpResult<Self> {
-        let creds = credentials::load()
-            .map_err(|e| McpError::Credentials(e.to_string()))?
-            .ok_or(McpError::NotLoggedIn)?;
+        let file_path =
+            credentials::fallback_path().map_err(|e| McpError::Credentials(e.to_string()))?;
+        let creds = match credentials::load_file(&file_path) {
+            Ok(Some(c)) => c,
+            Ok(None) => {
+                // File missing → fall back to the full (keyring-first) path.
+                // This still works for users who logged in with the CLI on a
+                // machine without a writable file fallback.
+                credentials::load()
+                    .map_err(|e| McpError::Credentials(e.to_string()))?
+                    .ok_or(McpError::NotLoggedIn)?
+            }
+            Err(e) => return Err(McpError::Credentials(e.to_string())),
+        };
         let base = Url::parse(&creds.server)
             .map_err(|e| McpError::Credentials(format!("server url: {e}")))?;
         let http = Client::builder()

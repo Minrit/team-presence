@@ -1,78 +1,127 @@
 ---
 name: tp-connect-machine
-description: Wire a new laptop into team-presence — login, install Claude Code hooks, start the collector, verify it shows up in Stream. Use on first-run, on a teammate's "how do I connect" question, or when the user says "/connect", "接入我的电脑", or "connect my machine".
+description: Wire a new laptop into team-presence — collect user's email + password, log in via MCP, install Claude Code hooks, start the collector daemon, verify the session shows up in Stream. Use on first-run, when a teammate asks "how do I connect", or when the user says "/connect", "接入我的电脑", "connect my machine". Drives tp_collector_login → tp_collector_install_hooks → (human runs `team-presence start`) → tp_collector_status.
 ---
 
 # tp-connect-machine
 
-Step-by-step onboarding. Keep each step to a single action so the user
-can follow along.
+Step-by-step onboarding for a fresh laptop. Each step either calls an
+MCP tool (preferred) or asks the user to run one shell command.
 
-## 1. Check current state
+## 0. Pre-flight
 
-Run `tp_collector_status`. Based on the result:
+Run `tp_collector_status`. Branch:
 
-- **`status=logged_in` + mute=false** — user is already connected; skip
-  to step 4 (verify in Stream).
-- **`status=logged_out`** — proceed to step 2.
-- **error** — surface the reason, most likely keyring permission issues
-  on macOS; suggest the file fallback at
-  `~/.config/team-presence/credentials.json`.
+- **`status=logged_in`** — skip to step 3. Credentials already saved.
+- **`status=logged_out`** — proceed to step 1 (login).
+- **error** — surface the reason; most often the binary isn't built.
+  Ask the user to run `cargo build -p team-presence-tp-mcp` in the
+  repo root and restart their MCP client.
+
+## 1. Collect identity
+
+**Ask the user two questions, one at a time**:
+
+1. "What's your team-presence server URL?" (default: `http://localhost:8080` for local dev)
+2. "What's your email for team-presence?" (if they don't know, try the
+    one they'd use for git: `git config user.email`)
+3. "What's the password? (Claude will pass this through to the login
+    tool — don't paste it anywhere else in the chat.)"
+
+Do **not** echo the password back in the transcript. When you call the
+tool, avoid quoting the password value in your own narration.
+
+Optional fourth question:
+
+4. "Any friendly name for this laptop? (default: current hostname)"
 
 ## 2. Login
 
-Ask the user for:
-- server URL (default `http://localhost:8080` for local dev)
-- email
+Call `tp_collector_login` with `{server, email, password, collector_name?}`.
 
-Then instruct them to run in their terminal (you can't elicit the
-password through MCP today; this stays manual):
+On success the tool returns:
 
-```bash
-cargo run --bin team-presence -- login \
-    --server <URL> \
-    --email <EMAIL>
+```
+logged in as <Display Name> <email>
+collector_name=<hostname-or-chosen>
+collector_id=<uuid>
+credentials saved — restart your MCP client so tp-mcp picks them up.
 ```
 
-Wait until they confirm "done" / pass a green message.
+**Important:** tp-mcp reads credentials at process start. For the
+write tools to become usable, the MCP client (Claude Code, Codex, …)
+needs to restart tp-mcp. Two options:
 
-## 3. Install hooks + start collector
+- Ask the user to restart the MCP client.
+- Or proceed with step 3 (install-hooks, which doesn't require tp-mcp
+  to have credentials — it runs in the collector crate directly), then
+  restart when the user is ready.
 
-Run `tp_collector_install_hooks` with `force=false`. Show the
-installed files.
+If the login fails with 401 → wrong email/password. Ask again.
+If it fails with a connection error → server unreachable; fix the URL.
 
-Then prompt them to run in another terminal:
+## 3. Install Claude Code hooks
+
+Call `tp_collector_install_hooks` with `force: false` (default).
+
+Expected: `installed=[...session-start.sh, ...stop.sh]`. If you see
+`skipped=[...]` both files, hooks are already present from an earlier
+run — that's fine, no action needed.
+
+## 4. Launch the collector daemon
+
+The collector is a long-running process that tails Claude Code
+transcripts and streams frames to the server. MCP cannot keep a
+process alive across calls, so **ask the user to run one shell
+command in a persistent terminal**:
 
 ```bash
+cd $TP_REPO   # or the absolute path to the team-presence repo
 cargo run --bin team-presence -- start
 ```
 
-Tell them to leave that window open — it tails Claude Code sessions.
+They should see in stderr:
 
-## 4. Verify in Stream
+```
+INFO listening for hook events
+INFO collector connected
+```
 
-Ask them to open `http://localhost:5173/stream`. They should see at
-least one live terminal (their current Claude Code session) within ~10
-seconds.
+Wait for the user to confirm "daemon running" / "I see 'collector
+connected'" before continuing.
 
-If nothing shows up after 30s, run diagnostics:
-- `tp_collector_status` — still logged in?
-- Check stderr on the `team-presence start` window.
-- Check `~/.claude/hooks/` contains `team-presence-session-start.sh` +
-  `team-presence-stop.sh`.
+## 5. Verify
 
-## Troubleshooting
+Ask the user to open `http://localhost:5173/stream` (or the appropriate
+team-presence web host). Within ~10 seconds of them using their Claude
+Code session (the `Stop` hook fires on each assistant turn) they should
+see their terminal tile appear.
 
-| Symptom | Fix |
-|---|---|
-| "keyring locked" on macOS | Unlock Keychain or use the file fallback |
-| `team-presence login` hangs | Server URL wrong — check /health |
-| No session in Stream | Hooks not installed or collector not running |
-| "invalid credentials" | Server JWT secret changed — re-login |
+If nothing appears after 30 seconds:
+- `tp_collector_status` — confirm still logged in + not muted.
+- Check the `team-presence start` stderr for errors.
+- `ls ~/.claude/hooks/team-presence-*.sh` — confirm hooks are present.
+- Tell them to restart their Claude Code client — existing sessions
+  don't re-fire `SessionStart` hooks.
+
+## 6. Wrap-up
+
+Congratulate the user. Tell them:
+
+- `/tp-dev-story` is the main workflow skill — use it to work a story
+  end-to-end.
+- `tp_collector_mute` / `tp_collector_unmute` when they want a private
+  session.
+- The board at `http://localhost:5173` is **read-only** — all writes
+  flow through MCP tools; they don't need to learn "click X to do Y".
 
 ## Guardrails
 
-- Don't run `tp_collector_uninstall_hooks` without explicit confirmation
-  ("yes, remove hooks"). Accidentally uninstalling breaks the team.
-- Don't `tp_collector_mute` as part of the setup flow — that silences
-  content frames and confuses the "is it working?" test.
+- Never invent an email or password. If the user won't provide them,
+  stop and ask again.
+- Never call `tp_collector_login` without explicit user confirmation
+  that they want their credentials saved on this machine.
+- Never call `tp_collector_uninstall_hooks` during onboarding — that's
+  the cleanup flow, not setup.
+- Never start the collector daemon yourself via `Bash` — it needs to
+  outlive your agent turn. Always hand off to the user's terminal.

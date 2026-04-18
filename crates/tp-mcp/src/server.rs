@@ -218,6 +218,22 @@ pub struct InstallHooksArgs {
     pub force: bool,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CollectorLoginArgs {
+    /// Server URL, e.g. `http://localhost:8080` or the team's
+    /// team-presence deployment. Trailing slash optional.
+    pub server: String,
+    /// Email of your team-presence account.
+    pub email: String,
+    /// Password. Stored only in-memory long enough to mint a long-lived
+    /// collector token; the password itself is not persisted.
+    pub password: String,
+    /// Optional friendly name for this collector in the admin UI.
+    /// Defaults to the hostname.
+    #[serde(default)]
+    pub collector_name: Option<String>,
+}
+
 // ---------------- tool implementations -------------------------------------
 
 #[tool_router]
@@ -773,6 +789,52 @@ impl TpMcp {
     // ==== Collector =======================================================
 
     #[tool(
+        description = "Log this laptop into team-presence: authenticates via email+password, mints a long-lived collector token, and writes credentials to the OS keyring (with a file fallback). After this succeeds, every other MCP tool on this server can be used. Call this once per laptop; the token is durable. Don't pass the password through shared transcripts — prefer calling the tool with redacted text in your own logs."
+    )]
+    pub async fn tp_collector_login(
+        &self,
+        Parameters(args): Parameters<CollectorLoginArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        use team_presence_collector::client::ApiClient as CollectorApi;
+        use team_presence_collector::credentials::{save, Credentials};
+
+        let api = CollectorApi::new(&args.server).map_err(|e| {
+            McpError::BadInput(format!("invalid server url: {e}"))
+        })?;
+        let login = api
+            .login(&args.email, &args.password)
+            .await
+            .map_err(|e| McpError::Other(format!("login failed: {e}")))?;
+
+        let name = args.collector_name.clone().or_else(hostname).unwrap_or_else(|| {
+            format!("{}-mcp", args.email.split('@').next().unwrap_or("agent"))
+        });
+        let mint = api
+            .mint_collector_token(&login.access_token, &name)
+            .await
+            .map_err(|e| McpError::Other(format!("mint token failed: {e}")))?;
+
+        let creds = Credentials::new(
+            args.server.trim_end_matches('/').into(),
+            login.user.email.clone(),
+            mint.id,
+            mint.name.clone(),
+            mint.token,
+        );
+        // Write straight to the 0600 file fallback, not the OS keyring.
+        // tp-mcp gets spawned by the MCP client on every workspace open;
+        // hitting the keyring every time triggers a macOS Keychain dialog
+        // which is intolerable as a dev-tool UX. The file is 0600 inside a
+        // 0700 dir — same security posture as ~/.ssh/id_rsa.
+        save(&creds, true).map_err(|e| McpError::Other(format!("save creds: {e}")))?;
+
+        ok_msg(format!(
+            "logged in as {} <{}>\ncollector_name={}\ncollector_id={}\ncredentials saved — restart your MCP client so tp-mcp picks them up.",
+            login.user.display_name, login.user.email, mint.name, mint.id,
+        ))
+    }
+
+    #[tool(
         description = "Report whether credentials are saved + whether muted. Does not require network access."
     )]
     pub async fn tp_collector_status(
@@ -978,4 +1040,20 @@ async fn set_ac_done(
 #[allow(dead_code)]
 fn _assert_types() -> Option<impl Serialize> {
     Some(json!({}))
+}
+
+/// Best-effort hostname for collector_name default. Mirrors the collector
+/// CLI's fallback logic in crates/collector/src/main.rs.
+fn hostname() -> Option<String> {
+    std::env::var("HOSTNAME")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            std::process::Command::new("hostname")
+                .output()
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
 }

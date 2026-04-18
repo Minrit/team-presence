@@ -20,7 +20,7 @@ Canonical locations of this file:
 |---|---|
 | Project | `team-presence` — read-only PM board + live Claude Code sessions for a 6-person team |
 | HTTP API | `http://localhost:8080/api/v1/*` (Bearer auth) |
-| MCP server | `tp-mcp` (stdio JSON-RPC, 30 tools) |
+| MCP server | `tp-mcp` (stdio JSON-RPC, 31 tools) |
 | Skills | `team-presence/.claude/skills/tp-*/SKILL.md` (7 BMad-style skills) |
 | Web UI | `http://localhost:5173` (read-only observation dashboard) |
 | Typical repo root | `~/ZStack/ai-native-workspace/team-presence` |
@@ -30,23 +30,49 @@ stamps every write whose request carries `X-Actor-Kind: agent` as
 `story_activity.actor_type='agent'`, so the audit log cleanly separates
 human vs agent operations. tp-mcp attaches that header for you.
 
+### 1.1 What you need on the laptop before you can follow this guide
+
+Today there is **no pre-built binary or installer**. You need:
+
+1. A local **clone of the repo** (source of the MCP binary + skills).
+2. A working **Rust toolchain** to build `tp-mcp` and the collector
+   CLI once.
+3. Access to the **team's server URL** (e.g. `http://localhost:8080`
+   for local dev, or an internal URL your admin gives you) plus an
+   account (email + password).
+4. Claude Code (or another MCP client) installed on the laptop.
+
+If any of those are missing, stop here and finish the prerequisites
+first. The rest of this document assumes they're in place.
+
+```bash
+# One-time clone + build. Substitute the real remote if different.
+git clone <your-team-presence-remote> ~/team-presence    # or any path
+export TP_REPO=~/team-presence
+cd $TP_REPO
+cargo build -p team-presence-tp-mcp                      # builds tp-mcp
+cargo build -p team-presence-collector                   # builds `team-presence` CLI
+```
+
+Result:
+- `$TP_REPO/target/debug/tp-mcp` — the MCP server binary
+- `$TP_REPO/target/debug/team-presence` — the collector CLI
+
 ---
 
 ## 2. Build the MCP binary
 
-Find the repo root and build. `tp-mcp` is a workspace member.
+If you followed §1.1 you already have `$TP_REPO/target/debug/tp-mcp`.
+Otherwise:
 
 ```bash
-export TP_REPO=$HOME/ZStack/ai-native-workspace/team-presence   # or wherever the repo is
 cd $TP_REPO
 cargo build -p team-presence-tp-mcp
 ```
 
-Result: `$TP_REPO/target/debug/tp-mcp`. It's a stdio JSON-RPC server.
-
-If cargo isn't available: ask a human to run the build once. You only
-need the binary path; the binary itself has no external runtime deps
-beyond whatever dynamic libs the system provides.
+The binary is a stdio JSON-RPC server with no external runtime deps
+beyond whatever dynamic libs the system provides (OpenSSL on Linux,
+Security framework on macOS — both already on any dev laptop).
 
 ---
 
@@ -126,26 +152,81 @@ See §8 below for the endpoint list, or read
 
 ## 4. Authenticate
 
-tp-mcp reuses the collector's on-disk credentials. The preferred flow is
-to have a human run `team-presence login` once per machine:
+You have two equivalent paths. Pick whichever fits your client.
+
+### 4.1 MCP-driven (preferred — the agent drives end-to-end)
+
+Ask the user these three questions, one at a time, and do **not**
+echo the password back in your transcript:
+
+1. "Team-presence server URL?" (default `http://localhost:8080`)
+2. "What email do you use for team-presence?"
+3. "Password?" (pass to the tool without reading aloud)
+
+Then call:
+
+```jsonc
+{"jsonrpc":"2.0","id":20,"method":"tools/call",
+ "params":{"name":"tp_collector_login",
+  "arguments":{
+    "server": "<URL>",
+    "email": "<email>",
+    "password": "<password>",
+    "collector_name": "<optional-friendly-name>"
+  }}}
+```
+
+On success the tool:
+- Calls `/api/v1/auth/login` → access token
+- Calls `/api/v1/collectors` → long-lived collector token
+- Writes the token to the OS keyring + file fallback (see 4.3)
+- Returns `{collector_id, collector_name, email, display_name}`
+
+**Important caveat**: tp-mcp reads credentials **at process start**.
+After the tool succeeds, the MCP client must restart tp-mcp for
+write tools to become usable. Tell the user to restart their Claude
+Code / Codex / Cursor session and come back.
+
+### 4.2 Shell-driven (if you prefer the CLI)
 
 ```bash
 cd $TP_REPO
 cargo run --bin team-presence -- login \
     --server http://localhost:8080 \
     --email <your-team-email>
+# interactive password prompt follows
 ```
 
-This stores a long-lived bearer token in:
-- **Primary:** OS keyring (macOS Keychain / libsecret / Windows cred
-  manager) under service `io.team-presence.collector`
-- **Fallback:** `~/.config/team-presence/credentials.json` (0600 in a
-  0700 dir)
+This is exactly what `tp_collector_login` wraps — same endpoints, same
+credentials file.
 
-tp-mcp reads from either, in that order, at startup.
+### 4.3 Where credentials go
 
-**Pure-agent alternative:** if you are running in a headless context
-without a human, you can call `/api/v1/auth/login` yourself:
+`tp_collector_login` writes to a **0600 file** inside a 0700 directory
+(same threat model as `~/.ssh/id_rsa`):
+
+- macOS: `~/Library/Application Support/io.team-presence.team-presence/credentials.json`
+- Linux (XDG): `~/.config/team-presence/credentials.json`
+- Windows: `%APPDATA%\io.team-presence\team-presence\credentials.json`
+
+Run `team-presence status` and read the `fallback:` line for the exact
+path on the current machine.
+
+**Why not the OS keyring?** The collector CLI used to default to
+macOS Keychain / libsecret / Windows Credential Manager for the
+primary store. That path triggers an "Allow tp-mcp to use your
+keychain" dialog every time an unsigned debug binary is spawned — and
+MCP clients spawn tp-mcp freely. The file path is identical in
+secrecy (0600, user-only) but never shows a popup. If a user already
+logged in via `team-presence login` and their creds are in the
+keyring, tp-mcp still falls back to reading the keyring when the file
+is absent — so existing users aren't broken.
+
+### 4.4 Pure-headless fallback (no human, no keyring)
+
+If you are running in a CI-like context without a human to answer
+questions and without writeable keyring/config, call the HTTP API
+directly and hold the JWT in memory:
 
 ```http
 POST http://localhost:8080/api/v1/auth/login
@@ -154,10 +235,10 @@ Content-Type: application/json
 {"email": "<email>", "password": "<password>"}
 ```
 
-You get back `{ access_token, access_ttl_secs, user }`. Use the
-`access_token` as your bearer. Refresh when it expires. Note: this
-bypasses the keyring storage, so remember the token in-memory for the
-session's duration.
+Response: `{ access_token, access_ttl_secs, user }`. Use that token
+for every subsequent HTTP request. Refresh before the 15-minute TTL
+expires (`POST /api/v1/auth/refresh` with the refresh cookie). This
+bypasses tp-mcp entirely — you would not use the MCP tools.
 
 ---
 
@@ -398,6 +479,7 @@ Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 
 | Tool | Semantics |
 |---|---|
+| `tp_collector_login(server, email, password, collector_name?)` | Log in, mint collector token, persist credentials. MCP client must restart tp-mcp after this for write tools to come online. |
 | `tp_collector_status()` | Login / mute / socket state. |
 | `tp_collector_install_hooks(force?)` | Drop Claude Code hook scripts into `~/.claude/hooks/`. |
 | `tp_collector_uninstall_hooks()` | Reverse of install. |

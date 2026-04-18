@@ -109,7 +109,11 @@ pub fn map_status(raw: &str) -> (StoryStatus, bool) {
     let lower = raw.trim().to_ascii_lowercase();
     match lower.as_str() {
         "doing" | "in_progress" | "in-progress" | "in progress" | "wip" | "active" => {
-            (StoryStatus::Doing, true)
+            (StoryStatus::InProgress, true)
+        }
+        "blocked" => (StoryStatus::Blocked, true),
+        "review" | "in_review" | "in-review" | "in review" | "pr" => {
+            (StoryStatus::Review, true)
         }
         "done" | "complete" | "completed" | "closed" | "finished" | "resolved" => {
             (StoryStatus::Done, true)
@@ -250,14 +254,20 @@ pub async fn apply_one(
         None => None,
     };
 
+    let empty_ac = serde_json::json!([]);
     let story = repo::create(
         db,
         actor,
         &parsed.title,
         &parsed.description,
-        "", // acceptance_criteria blank on import; bmad rarely has it
+        &empty_ac,
         parsed.status,
         owner_id,
+        None,
+        None,
+        None,
+        None,
+        None,
         None,
         None,
     )
@@ -353,7 +363,7 @@ mod tests {
             "Active",
         ] {
             let (st, known) = map_status(s);
-            assert_eq!(st, StoryStatus::Doing, "failed for {s}");
+            assert_eq!(st, StoryStatus::InProgress, "failed for {s}");
             assert!(known);
         }
         for s in [
@@ -409,7 +419,7 @@ mod tests {
     fn parse_str_status_mapping_applied() {
         let raw = "---\ntitle: t\nstatus: in_progress\n---\nbody";
         let p = parse_str(Path::new("x.md"), raw).unwrap();
-        assert_eq!(p.status, StoryStatus::Doing);
+        assert_eq!(p.status, StoryStatus::InProgress);
         assert!(p.warnings.is_empty());
     }
 

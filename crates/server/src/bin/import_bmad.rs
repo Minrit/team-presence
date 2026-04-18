@@ -92,11 +92,7 @@ fn print_help() {
 }
 
 fn status_label(s: StoryStatus) -> &'static str {
-    match s {
-        StoryStatus::Todo => "todo",
-        StoryStatus::Doing => "doing",
-        StoryStatus::Done => "done",
-    }
+    s.as_str()
 }
 
 fn print_preview(stories: &[ParsedStory]) {

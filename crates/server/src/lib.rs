@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod collectors;
+pub mod epics;
 pub mod error;
 pub mod session;
 pub mod sprints;
@@ -34,6 +35,30 @@ pub fn build_router(state: AppState) -> Router {
                 .patch(stories::handlers::patch)
                 .delete(stories::handlers::delete),
         )
+        // Story activity log (Unit 10)
+        .route(
+            "/api/v1/stories/:id/activity",
+            get(stories::handlers::list_activity),
+        )
+        // Story relations (Unit 10)
+        .route(
+            "/api/v1/stories/:id/relations",
+            get(stories::handlers::list_relations)
+                .post(stories::handlers::create_relation),
+        )
+        .route(
+            "/api/v1/stories/:id/relations/:target",
+            delete(stories::handlers::delete_relation),
+        )
+        // Epics CRUD (Unit 10)
+        .route(
+            "/api/v1/epics",
+            get(epics::handlers::list).post(epics::handlers::create),
+        )
+        .route(
+            "/api/v1/epics/:id",
+            patch(epics::handlers::patch).delete(epics::handlers::delete),
+        )
         // Sprints CRUD
         .route(
             "/api/v1/sprints",
@@ -56,9 +81,6 @@ pub fn build_router(state: AppState) -> Router {
             auth::require_identity,
         ));
 
-    // Collector WS does its own bearer check because axum middleware can't
-    // run on the upgraded socket (we need the collector_token_id, not just
-    // user_id, on the session's persistence path).
     let collector_ws = Router::new().route("/ws/collector", get(ws::collector::ws_handler));
 
     let public = Router::new()

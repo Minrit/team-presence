@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import { AppShell } from './shell/AppShell'
+import AgentSetup from './pages/AgentSetup'
 import Backlog from './pages/Backlog'
 import Board from './pages/Board'
 import Compute from './pages/Compute'
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/compute" element={<Compute />} />
             <Route path="/overview" element={<Overview />} />
             <Route path="/connect" element={<Connect />} />
+            <Route path="/agent-setup" element={<AgentSetup />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/stories" element={<Stories />} />
             <Route path="/sprints" element={<Sprints />} />

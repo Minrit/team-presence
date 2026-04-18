@@ -22,7 +22,10 @@ use state::AppState;
 pub fn build_router(state: AppState) -> Router {
     let protected = Router::new()
         .route("/api/v1/auth/me", get(auth::handlers::me))
-        .route("/api/v1/auth/users", post(auth::handlers::add_user_authenticated))
+        .route(
+            "/api/v1/auth/users",
+            get(auth::handlers::list_users).post(auth::handlers::add_user_authenticated),
+        )
         .route("/api/v1/collectors", post(collectors::mint))
         .route("/api/v1/collectors/:id", delete(collectors::revoke))
         // Stories CRUD

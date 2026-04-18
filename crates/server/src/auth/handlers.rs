@@ -157,6 +157,20 @@ pub async fn me(
     row.map(Json).ok_or(AppError::NotFound)
 }
 
+/// Everyone-admin workspace: any authenticated user can list teammates.
+/// Used by the browser to label owner avatars / owner-filter chips.
+pub async fn list_users(
+    State(state): State<AppState>,
+    Extension(_identity): Extension<Identity>,
+) -> Result<Json<Vec<UserPublic>>, AppError> {
+    let rows: Vec<UserPublic> = sqlx::query_as(
+        "SELECT id, email, display_name, created_at FROM users ORDER BY created_at ASC",
+    )
+    .fetch_all(&state.db)
+    .await?;
+    Ok(Json(rows))
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 fn validate_registration(email: &str, password: &str, display_name: &str) -> Result<(), AppError> {

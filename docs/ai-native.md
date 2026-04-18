@@ -21,6 +21,23 @@ does the work.
 
 ## Quick start
 
+### Users (new laptop, you just want to drive team-presence from Claude Code)
+
+```bash
+# One-line install of the tp-mcp binary. Replace the URL with whatever
+# your team's server is reachable at.
+curl -fsSL http://<team-presence-server>/install.sh | sh
+
+# Then in Claude Code, run /tp-connect-machine — the skill walks you
+# through login + hooks + collector daemon.
+```
+
+The installer fetches `tp-mcp-{os}-{arch}` (darwin arm64/x86_64, linux
+arm64/x86_64), verifies sha256 against the server's manifest, and drops
+it at `~/.local/bin/tp-mcp`. Windows is not supported today.
+
+### Contributors (you're editing Rust or web source)
+
 ```bash
 # 0. Start infra
 docker compose up -d postgres redis
@@ -29,7 +46,7 @@ docker compose up -d postgres redis
 cargo build
 cargo run --bin server      # :8080
 
-# 2. Build the MCP server binary
+# 2. Build the MCP server binary (debug build, fast)
 cargo build -p team-presence-tp-mcp
 
 # 3. Build the web dashboard
@@ -41,6 +58,11 @@ cargo run --bin team-presence -- login --server http://localhost:8080 --email yo
 
 # 5. Launch Claude Code in this repo. It auto-loads .mcp.json and spawns
 #    the tp-mcp server via stdio; /tp-* skills appear in its palette.
+
+# 6. (Optional) produce the release binaries your server will serve to
+#    teammates on /install.sh. Re-run this after every tp-mcp change
+#    that needs to land in production:
+bash scripts/build-release-binaries.sh
 ```
 
 ## Skills

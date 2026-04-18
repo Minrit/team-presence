@@ -30,43 +30,95 @@ stamps every write whose request carries `X-Actor-Kind: agent` as
 `story_activity.actor_type='agent'`, so the audit log cleanly separates
 human vs agent operations. tp-mcp attaches that header for you.
 
-### 1.1 What you need on the laptop before you can follow this guide
+### 1.1 One-line install (preferred path)
 
-Today there is **no pre-built binary or installer**. You need:
-
-1. A local **clone of the repo** (source of the MCP binary + skills).
-2. A working **Rust toolchain** to build `tp-mcp` and the collector
-   CLI once.
-3. Access to the **team's server URL** (e.g. `http://localhost:8080`
-   for local dev, or an internal URL your admin gives you) plus an
-   account (email + password).
-4. Claude Code (or another MCP client) installed on the laptop.
-
-If any of those are missing, stop here and finish the prerequisites
-first. The rest of this document assumes they're in place.
+The team-presence HTTP server ships a pre-compiled `tp-mcp` for the four
+supported laptop targets. On a clean machine, this is the whole setup:
 
 ```bash
-# One-time clone + build. Substitute the real remote if different.
-git clone <your-team-presence-remote> ~/team-presence    # or any path
-export TP_REPO=~/team-presence
-cd $TP_REPO
-cargo build -p team-presence-tp-mcp                      # builds tp-mcp
-cargo build -p team-presence-collector                   # builds `team-presence` CLI
+curl -fsSL http://<team-presence-server>/install.sh | sh
 ```
 
-Result:
-- `$TP_REPO/target/debug/tp-mcp` — the MCP server binary
-- `$TP_REPO/target/debug/team-presence` — the collector CLI
+`http://<team-presence-server>` is whatever URL your admin gave you
+(e.g. `http://localhost:8080` for local dev, or an internal hostname).
+The installer:
+
+1. Detects your OS / CPU (`uname -s` + `uname -m`).
+2. Fetches `/download/manifest.json` and the matching binary from
+   `/download/tp-mcp-{os}-{arch}`.
+3. Verifies the sha256 against the manifest.
+4. Drops the binary at `~/.local/bin/tp-mcp` (override with
+   `TP_INSTALL_DIR=…`).
+5. Prints a PATH hint if `~/.local/bin` isn't already on `$PATH`.
+
+Supported combinations (R1):
+
+| OS | Architecture | Artifact |
+|---|---|---|
+| macOS 12+ | Apple Silicon | `tp-mcp-darwin-aarch64` |
+| macOS 12+ | Intel | `tp-mcp-darwin-x86_64` |
+| Linux | arm64 | `tp-mcp-linux-aarch64` |
+| Linux | x86_64 | `tp-mcp-linux-x86_64` |
+
+**Windows is not supported** today — there is no `.exe` artifact and
+the credential / keyring path would need a separate port. Open an
+issue if you need it.
+
+Environment variables the installer honors:
+
+| Var | Default | Purpose |
+|---|---|---|
+| `TP_SERVER` | (baked in by the server at request time) | Override the download server |
+| `TP_INSTALL_DIR` | `$HOME/.local/bin` | Where to drop `tp-mcp` |
+| `TP_SKIP_SHA` | `0` | Set `1` to skip checksum (debug only, **not recommended**) |
+
+After `install.sh` returns, `tp-mcp --version`-style usage is not the
+entry point — `tp-mcp` is an MCP stdio server spawned by your client.
+Wire it into `.mcp.json` (see §3) or run `/tp-connect-machine` in
+Claude Code to let the skill take it from here.
+
+macOS Gatekeeper: `curl` downloads don't receive the `quarantine`
+xattr, so the binary runs without a "malicious software" dialog. If
+you *did* fetch it via Safari and the OS refuses to execute it, run
+`xattr -d com.apple.quarantine ~/.local/bin/tp-mcp` once.
+
+### 1.2 Contributor path (only if you're modifying tp-mcp itself)
+
+If you need to edit the Rust source rather than just use the tool:
+
+```bash
+git clone <your-team-presence-remote> ~/team-presence
+export TP_REPO=~/team-presence
+cd $TP_REPO
+cargo build -p team-presence-tp-mcp        # debug, fast
+# for a release build matching what install.sh would serve:
+bash scripts/build-release-binaries.sh --native-only
+```
+
+Debug build lives at `$TP_REPO/target/debug/tp-mcp`; the release
+artifact lands in `$TP_REPO/downloads/tp-mcp-{os}-{arch}` alongside a
+regenerated `downloads/manifest.json`. The repo-local `.mcp.json`
+points Claude Code at `./target/debug/tp-mcp` by default — so the
+curl install and the clone path can coexist on the same laptop
+without conflicting. Pick whichever matches what you're doing right
+now.
+
+The collector CLI (`team-presence` binary) is still contributor-only
+for now; there's no install.sh entry for it yet. Build with
+`cargo build -p team-presence-collector` and it lands at
+`$TP_REPO/target/debug/team-presence`.
 
 ---
 
-## 2. Build the MCP binary
+## 2. Build the MCP binary (contributor path only)
 
-If you followed §1.1 you already have `$TP_REPO/target/debug/tp-mcp`.
-Otherwise:
+If you installed via `curl install.sh | sh` (§1.1) you can skip this —
+the binary is already at `~/.local/bin/tp-mcp`.
+
+If you followed the contributor path in §1.2 you already have
+`$TP_REPO/target/debug/tp-mcp`. Otherwise, from the repo root:
 
 ```bash
-cd $TP_REPO
 cargo build -p team-presence-tp-mcp
 ```
 
@@ -78,10 +130,26 @@ Security framework on macOS — both already on any dev laptop).
 
 ## 3. Configure yourself as an MCP client
 
-### 3.1 Claude Code (repo-local config; recommended)
+### 3.1 Claude Code
 
-Claude Code auto-loads `$TP_REPO/.mcp.json` on workspace open. It already
-contains:
+If you installed via §1.1 `install.sh` (the common case), add this to
+your user-level `~/.claude/mcp.json` (or copy into a project's
+`.mcp.json`). The absolute path works from any CWD:
+
+```json
+{
+  "mcpServers": {
+    "team-presence": {
+      "command": "/Users/you/.local/bin/tp-mcp",
+      "args": [],
+      "env": { "TP_MCP_LOG": "info" }
+    }
+  }
+}
+```
+
+If you went the contributor path (§1.2), the repo already ships a
+`.mcp.json` at its root using a relative path:
 
 ```json
 {

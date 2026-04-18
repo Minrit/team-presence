@@ -1,10 +1,9 @@
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
 import { StatusIcon } from '../../design/StatusIcon'
 import { STATUS_META } from '../../design/meta'
 import { StoryCard } from './StoryCard'
 import type { Epic, GridTile, Story, StoryStatus, User } from '../../types'
 
+/** Read-only column. Previously droppable for dnd-kit; now purely a list. */
 export function BoardColumn({
   status,
   stories,
@@ -18,8 +17,6 @@ export function BoardColumn({
   tilesByStory: Record<string, GridTile[]>
   usersById: Record<string, User>
 }) {
-  const dropId = `col:${status}`
-  const { setNodeRef, isOver } = useDroppable({ id: dropId })
   const meta = STATUS_META[status]
 
   return (
@@ -32,7 +29,6 @@ export function BoardColumn({
         gap: 10,
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -65,9 +61,7 @@ export function BoardColumn({
         </span>
       </div>
 
-      {/* Droppable */}
       <div
-        ref={setNodeRef}
         style={{
           flex: 1,
           minHeight: 60,
@@ -75,27 +69,17 @@ export function BoardColumn({
           flexDirection: 'column',
           gap: 8,
           padding: 6,
-          borderRadius: 'var(--radius)',
-          background: isOver ? 'rgba(99, 102, 241, 0.06)' : 'transparent',
-          border: '1px dashed transparent',
-          borderColor: isOver ? 'var(--hv-accent)' : 'transparent',
-          transition: 'background 120ms',
         }}
       >
-        <SortableContext
-          items={stories.map((s) => s.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {stories.map((s) => (
-            <StoryCard
-              key={s.id}
-              story={s}
-              epics={epics}
-              tilesByStory={tilesByStory}
-              owner={s.owner_id ? usersById[s.owner_id] : undefined}
-            />
-          ))}
-        </SortableContext>
+        {stories.map((s) => (
+          <StoryCard
+            key={s.id}
+            story={s}
+            epics={epics}
+            tilesByStory={tilesByStory}
+            owner={s.owner_id ? usersById[s.owner_id] : undefined}
+          />
+        ))}
         {stories.length === 0 && (
           <div
             style={{
@@ -105,7 +89,7 @@ export function BoardColumn({
               color: 'var(--fg-4)',
             }}
           >
-            drag a story here
+            —
           </div>
         )}
       </div>

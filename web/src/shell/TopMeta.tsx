@@ -2,14 +2,15 @@ import { useLocation } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
 import { AvatarStack, userToAvatar } from '../design/Avatar'
-import { Button } from '../design/Button'
-import { Icon } from '../design/Icon'
 import { LiveDot } from '../design/LiveDot'
 import type { SessionMetaLite, User } from '../types'
 import { activeNavLabel } from './nav'
 
 const sessionsFetcher = (k: string) => api.get<SessionMetaLite[]>(k)
 
+/** Read-only status strip. AI-native posture: no write buttons (New / Bell
+ *  were removed because they either did nothing or only existed as UI hooks
+ *  for features now driven by the MCP toolchain). */
 export function TopMeta() {
   const { pathname } = useLocation()
   const { data: sessions } = useSWR<SessionMetaLite[]>(
@@ -42,23 +43,20 @@ export function TopMeta() {
         borderBottom: '1px solid var(--hv-border)',
       }}
     >
-      {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <span
-          style={{
-            font: '500 12.5px/1 var(--font)',
-            color: 'var(--fg-2)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {crumb}
-        </span>
-      </div>
+      <span
+        style={{
+          font: '500 12.5px/1 var(--font)',
+          color: 'var(--fg-2)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {crumb}
+      </span>
 
       <div style={{ flex: 1 }} />
 
-      {/* Live session count */}
       <div
+        title="Active collector sessions"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -74,33 +72,7 @@ export function TopMeta() {
         {activeSessions.length} live
       </div>
 
-      {/* Online avatar stack */}
       {avatars.length > 0 && <AvatarStack users={avatars} size={22} max={4} />}
-
-      {/* Notifications (placeholder) */}
-      <button
-        type="button"
-        title="Notifications"
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--hv-border)',
-          background: 'var(--surface)',
-          cursor: 'pointer',
-          color: 'var(--fg-2)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name="bell" size={14} />
-      </button>
-
-      {/* New */}
-      <Button variant="primary" size="sm" icon={<Icon name="plus" size={12} color="#fff" />}>
-        New
-      </Button>
     </div>
   )
 }

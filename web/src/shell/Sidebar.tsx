@@ -26,52 +26,31 @@ export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
         padding: '14px 0',
       }}
     >
-      {/* Workspace header */}
-      <div style={{ padding: '0 14px 12px' }}>
-        <button
-          type="button"
+      {/* Brand — read-only badge. AI-native posture: no workspace switcher. */}
+      <div
+        style={{
+          padding: '6px 18px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        <div
           style={{
-            width: '100%',
-            display: 'flex',
+            width: 26,
+            height: 26,
+            borderRadius: 7,
+            background: 'linear-gradient(135deg,var(--hv-accent),#8b5cf6)',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 10,
-            padding: '8px 10px',
-            background: 'transparent',
-            border: '1px solid transparent',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            textAlign: 'left',
+            justifyContent: 'center',
           }}
         >
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              background: 'linear-gradient(135deg,var(--hv-accent),#8b5cf6)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="#fff">
-              <path d="M7 1 2 4v6l5 3 5-3V4L7 1Zm0 2 3 1.8v3.4L7 10 4 8.2V4.8L7 3Z" />
-            </svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ font: '600 13px/1.2 var(--font)' }}>team-presence</div>
-            <div
-              style={{
-                font: '400 11px/1 var(--font)',
-                color: 'var(--fg-3)',
-                marginTop: 2,
-              }}
-            >
-              Hive · workspace
-            </div>
-          </div>
-          <Icon name="chevronD" size={13} color="var(--fg-3)" />
-        </button>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="#fff">
+            <path d="M7 1 2 4v6l5 3 5-3V4L7 1Zm0 2 3 1.8v3.4L7 10 4 8.2V4.8L7 3Z" />
+          </svg>
+        </div>
+        <div style={{ font: '600 13px/1.2 var(--font)' }}>team-presence</div>
       </div>
 
       {/* Search / ⌘K */}

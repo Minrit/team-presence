@@ -1,283 +1,158 @@
-import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../auth'
-import { Button } from '../design/Button'
+import { Card } from '../design/Card'
 import { Icon } from '../design/Icon'
-import { AGENTS } from '../design/meta'
-import type { AgentKind } from '../types'
+import { Kbd } from '../design/Kbd'
 
-const STEPS = ['Choose agent', 'Install bridge', 'Configure shares', 'Ready'] as const
-
+/** Read-only onboarding guide. All four setup steps now flow through the
+ *  /tp-connect-machine skill in Claude Code; this page only explains how. */
 export default function Connect() {
-  const [params, setParams] = useSearchParams()
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const stepNum = Math.max(1, Math.min(4, Number(params.get('step') ?? '1')))
-  const agent = (params.get('agent') as AgentKind) || 'claude_code'
-  const shares = useMemo(() => loadShares(), [])
-
-  const goStep = (n: number) => {
-    const p = new URLSearchParams(params)
-    p.set('step', String(n))
-    setParams(p, { replace: false })
-  }
-
-  const pickAgent = (id: AgentKind) => {
-    const p = new URLSearchParams(params)
-    p.set('agent', id)
-    p.set('step', '2')
-    setParams(p)
-  }
-
   return (
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 820 }}>
-      {/* Stepper */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        {STEPS.map((label, i) => {
-          const n = i + 1
-          const active = n === stepNum
-          const done = n < stepNum
-          return (
-            <div
-              key={label}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                background: active ? 'var(--surface)' : 'var(--bg-2)',
-                border: `1px solid ${active ? 'var(--hv-accent)' : 'var(--hv-border)'}`,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                font: '500 12.5px/1 var(--font)',
-                color: active ? 'var(--hv-fg)' : done ? 'var(--fg-2)' : 'var(--fg-3)',
-              }}
-            >
-              <span
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: '50%',
-                  background: done ? 'var(--success)' : active ? 'var(--hv-accent)' : 'var(--fg-4)',
-                  color: '#fff',
-                  font: '600 11px/20px var(--font)',
-                  textAlign: 'center',
-                }}
-              >
-                {n}
-              </span>
-              {label}
-            </div>
-          )
-        })}
+    <div
+      style={{
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        maxWidth: 820,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 14px',
+          background: 'var(--surface)',
+          border: '1px solid var(--hv-border)',
+          borderRadius: 'var(--radius)',
+        }}
+      >
+        <Icon name="plug" size={16} color="var(--hv-accent)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+          <div style={{ font: '600 13px/1.2 var(--font)' }}>Connect your machine</div>
+          <div style={{ font: '400 12px/1.4 var(--font)', color: 'var(--fg-3)' }}>
+            team-presence is driven by Claude Code + MCP. Open Claude Code in this repo,
+            then run <Kbd>⌘K</Kbd> → <span className="mono">/tp-connect-machine</span>.
+            The skill walks you through the four steps below.
+          </div>
+        </div>
       </div>
 
-      {/* Content */}
-      {stepNum === 1 && (
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--hv-border)',
-            borderRadius: 'var(--radius)',
-            padding: 18,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ font: '600 15px/1.2 var(--font)' }}>Which agent runtime?</div>
-          <div style={{ font: '400 12.5px/1.5 var(--font)', color: 'var(--fg-3)' }}>
-            Only Claude Code has a production capture path today. Other options are reserved for
-            future collectors — picking them lets the platform record your presence but content
-            won't stream.
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: 10,
-            }}
-          >
-            {(Object.keys(AGENTS) as AgentKind[]).map((id) => {
-              const meta = AGENTS[id]
-              const live = id === 'claude_code'
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => pickAgent(id)}
-                  style={{
-                    padding: 14,
-                    background: 'var(--surface)',
-                    border: `1px solid ${agent === id ? 'var(--hv-accent)' : 'var(--hv-border)'}`,
-                    borderRadius: 'var(--radius)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: 6,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: meta.color }} />
-                  <span style={{ font: '600 13.5px/1.2 var(--font)' }}>{meta.label}</span>
-                  <span
-                    style={{
-                      font: '400 11px/1 var(--font)',
-                      color: live ? 'var(--success)' : 'var(--fg-4)',
-                    }}
-                  >
-                    {live ? 'Available now' : 'Coming soon'}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      <Step
+        num={1}
+        title="Choose agent"
+        body="The collector tails Claude Code transcripts today. Cursor / Codex / Aider / Local are reserved wire-level stubs for later collectors; picking them logs presence only, no content."
+      />
 
-      {stepNum === 2 && (
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--hv-border)',
-            borderRadius: 'var(--radius)',
-            padding: 18,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ font: '600 15px/1.2 var(--font)' }}>Install the bridge</div>
-          <div style={{ font: '400 12.5px/1.5 var(--font)', color: 'var(--fg-3)' }}>
-            The collector runs on your laptop. It listens for {AGENTS[agent].label} hook events,
-            tails transcripts, and streams frames to this workspace over WebSocket.
-          </div>
-          <pre
-            style={{
-              background: '#0b0b0f',
-              color: '#d4d4d8',
-              padding: 12,
-              borderRadius: 'var(--radius-sm)',
-              font: '400 12px/1.5 var(--mono)',
-              overflow: 'auto',
-            }}
-          >
-            {`# From the repo root
-cargo run --bin team-presence -- login --server ${window.location.origin} --email ${
-              user?.email ?? 'you@team.local'
-            }
-cargo run --bin team-presence -- start --agent ${agent}`}
-          </pre>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" size="sm" onClick={() => goStep(1)}>
-              Back
-            </Button>
-            <div style={{ flex: 1 }} />
-            <Button size="sm" onClick={() => goStep(3)}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <Step
+        num={2}
+        title="Install bridge"
+        body="Log in once and install Claude Code hooks so transcripts start flowing."
+        code={`# inside this repo\ncargo run --bin team-presence -- login \\\n    --server http://localhost:8080 \\\n    --email you@team.local\ncargo run --bin team-presence -- install-hooks\ncargo run --bin team-presence -- start`}
+      />
 
-      {stepNum === 3 && (
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--hv-border)',
-            borderRadius: 'var(--radius)',
-            padding: 18,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          <div style={{ font: '600 15px/1.2 var(--font)' }}>Share preferences</div>
-          <div style={{ font: '400 12.5px/1.5 var(--font)', color: 'var(--fg-3)' }}>
-            These toggles configure what your teammates can see. Stored in your browser for now —
-            server-side persistence ships in Phase B.
-          </div>
-          {[
-            { id: 'view_sessions', label: 'Let teammates watch my live sessions', default: true },
-            { id: 'scheduled_jobs', label: 'Allow scheduled agent jobs on my machine', default: false },
-            { id: 'remote_terminal', label: 'Allow remote terminal control', default: false },
-            { id: 'share_gpu', label: 'Share GPU / accelerator', default: false },
-          ].map((row) => (
-            <label
-              key={row.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 0',
-                borderBottom: '1px solid var(--hv-border)',
-              }}
-            >
-              <input
-                type="checkbox"
-                defaultChecked={shares[row.id] ?? row.default}
-                onChange={(e) => saveShare(row.id, e.currentTarget.checked)}
-              />
-              <span style={{ font: '400 13px/1.4 var(--font)' }}>{row.label}</span>
-            </label>
-          ))}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" size="sm" onClick={() => goStep(2)}>
-              Back
-            </Button>
-            <div style={{ flex: 1 }} />
-            <Button size="sm" onClick={() => goStep(4)}>
-              Finish
-            </Button>
-          </div>
-        </div>
-      )}
+      <Step
+        num={3}
+        title="Configure shares"
+        body="The four share toggles (view sessions / scheduled jobs / remote terminal / GPU) live in your local config. Server-side persistence is Phase B. Use /tp-connect-machine → “configure shares” to flip them."
+      />
 
-      {stepNum === 4 && (
-        <div
+      <Step
+        num={4}
+        title="Ready"
+        body="Anything you do in Claude Code shows up in Stream and on the owning story. Drive PM (create / edit / move status / groom AC) via the /tp-* skills — no clicks on this page."
+      />
+
+      <Card
+        style={{
+          padding: 14,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div style={{ font: '600 12.5px/1.2 var(--font)' }}>Troubleshooting</div>
+        <ul
           style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--hv-border)',
-            borderRadius: 'var(--radius)',
-            padding: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 14,
-            textAlign: 'center',
+            margin: 0,
+            paddingLeft: 20,
+            font: '400 12.5px/1.5 var(--font)',
+            color: 'var(--fg-2)',
           }}
         >
-          <Icon name="check" size={40} color="var(--success)" />
-          <div style={{ font: '600 18px/1.2 var(--font)' }}>You're connected</div>
-          <div style={{ font: '400 13px/1.5 var(--font)', color: 'var(--fg-3)' }}>
-            Anything you work on in {AGENTS[agent].label} will show up here for the team within a
-            few seconds.
-          </div>
-          <Button onClick={() => navigate('/')}>Go to Board</Button>
-        </div>
-      )}
+          <li>
+            <strong>No live sessions in Stream?</strong> Make sure the collector is running
+            (<span className="mono">team-presence start</span>) and Claude Code has the
+            hooks installed (<span className="mono">install-hooks</span>).
+          </li>
+          <li>
+            <strong>MCP not visible in Claude Code?</strong> Rebuild the server
+            (<span className="mono">cargo build -p team-presence-lp-mcp</span>) and restart
+            Claude Code so it re-reads <span className="mono">.mcp.json</span>.
+          </li>
+          <li>
+            <strong>Every MCP tool errors “not logged in”?</strong> Run
+            <span className="mono"> team-presence login</span> once. Credentials land in
+            the macOS keyring (with a file fallback at
+            <span className="mono"> ~/.config/team-presence/credentials.json</span>).
+          </li>
+        </ul>
+      </Card>
     </div>
   )
 }
 
-const SHARES_KEY = 'tp.connect.shares.v1'
-
-function loadShares(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(SHARES_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveShare(key: string, v: boolean) {
-  try {
-    const cur = loadShares()
-    cur[key] = v
-    localStorage.setItem(SHARES_KEY, JSON.stringify(cur))
-  } catch {
-    /* noop */
-  }
+function Step({
+  num,
+  title,
+  body,
+  code,
+}: {
+  num: number
+  title: string
+  body: string
+  code?: string
+}) {
+  return (
+    <Card
+      style={{
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: 'var(--hv-accent)',
+            color: '#fff',
+            font: '600 12px/22px var(--font)',
+            textAlign: 'center',
+          }}
+        >
+          {num}
+        </span>
+        <div style={{ font: '600 14px/1.2 var(--font)' }}>{title}</div>
+      </div>
+      <div style={{ font: '400 12.5px/1.55 var(--font)', color: 'var(--fg-2)' }}>{body}</div>
+      {code && (
+        <pre
+          style={{
+            background: '#0b0b0f',
+            color: '#d4d4d8',
+            padding: 12,
+            borderRadius: 'var(--radius-sm)',
+            font: '400 12px/1.6 var(--mono)',
+            overflow: 'auto',
+            margin: 0,
+          }}
+        >
+          {code}
+        </pre>
+      )}
+    </Card>
+  )
 }

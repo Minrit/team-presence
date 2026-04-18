@@ -1,24 +1,21 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
-import { Button } from '../design/Button'
 import { Chip } from '../design/Chip'
-import { Icon } from '../design/Icon'
 import { Priority } from '../design/Priority'
 import { ProgressBar } from '../design/ProgressBar'
 import { StoryId } from '../design/StoryId'
-import { claimStory, useEpics, useStories } from '../stories'
-import type { Priority as PriorityLevel, Story } from '../types'
+import { useEpics, useStories } from '../stories'
+import type { Priority as PriorityLevel } from '../types'
 
 const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P1', 'P2', 'P3']
 
+/** Read-only backlog. Claim happens via MCP (`tp.story.claim` /
+ *  `/tp-dev-story`). Filter chips are pure client-side UI state. */
 export default function Backlog() {
-  const { data: stories, mutate } = useStories()
+  const { data: stories } = useStories()
   const { data: epics } = useEpics()
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<PriorityLevel | 'all'>('all')
-  const [claiming, setClaiming] = useState<string | null>(null)
 
   const epicsById = useMemo(() => {
     const m: Record<string, string> = {}
@@ -44,27 +41,8 @@ export default function Backlog() {
     return c
   }, [eligible])
 
-  const onClaim = async (story: Story) => {
-    if (!user) return
-    setClaiming(story.id)
-    const next = (stories ?? []).map((s) =>
-      s.id === story.id ? { ...s, status: 'in_progress' as const, owner_id: user.id } : s,
-    )
-    mutate(next, { revalidate: false })
-    try {
-      await claimStory(story.id, user.id)
-      navigate(`/story/${story.id}`)
-    } catch (err) {
-      mutate(stories, { revalidate: false })
-      alert(`Claim failed: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setClaiming(null)
-    }
-  }
-
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Filter chips */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         {PRIO_FILTERS.map((p) => {
           if (p !== 'all' && (counts[p] ?? 0) === 0) return null
@@ -79,9 +57,18 @@ export default function Backlog() {
             </Chip>
           )
         })}
+        <div style={{ flex: 1 }} />
+        <span
+          style={{
+            font: '400 11.5px/1 var(--font)',
+            color: 'var(--fg-3)',
+          }}
+          title="Claim happens via the team-presence MCP server (/tp-dev-story or tp.story.claim)"
+        >
+          Claim via MCP · <span className="mono">/tp-dev-story</span>
+        </span>
       </div>
 
-      {/* Cards grid */}
       <div
         style={{
           display: 'grid',
@@ -158,33 +145,17 @@ export default function Backlog() {
                   </div>
                 </div>
               )}
-              <div
-                style={{
-                  marginTop: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                {s.points != null && (
-                  <span style={{ font: '500 11px/1 var(--mono)', color: 'var(--fg-3)' }}>
-                    {s.points} pt
-                  </span>
-                )}
-                <div style={{ flex: 1 }} />
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={claiming === s.id}
-                  icon={<Icon name="zap" size={12} color="#fff" />}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onClaim(s)
+              {s.points != null && (
+                <span
+                  style={{
+                    font: '500 11px/1 var(--mono)',
+                    color: 'var(--fg-3)',
+                    alignSelf: 'flex-start',
                   }}
                 >
-                  {claiming === s.id ? 'Claiming…' : 'Claim'}
-                </Button>
-              </div>
+                  {s.points} pt
+                </span>
+              )}
             </div>
           )
         })}

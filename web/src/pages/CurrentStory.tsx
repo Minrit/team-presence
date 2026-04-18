@@ -1,14 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
-import { useAuth } from '../auth'
 import { AgentChip } from '../design/AgentChip'
-import { Avatar, userToAvatar } from '../design/Avatar'
-import { Button } from '../design/Button'
 import { Card } from '../design/Card'
-import { Icon } from '../design/Icon'
-import { Kbd } from '../design/Kbd'
 import { Priority } from '../design/Priority'
 import { ProgressBar } from '../design/ProgressBar'
 import { StatusPill } from '../design/StatusPill'
@@ -16,9 +11,6 @@ import { StoryId } from '../design/StoryId'
 import { useSseGrid } from '../hooks/useSseGrid'
 import { useStoryActivityStream } from '../hooks/useStoryActivityStream'
 import {
-  patchStory,
-  postComment,
-  storyCommentsKey,
   useComments,
   useEpics,
   useStory,
@@ -26,7 +18,7 @@ import {
   useStoryRelations,
 } from '../stories'
 import { Terminal } from '../terminal/Terminal'
-import type { SessionMetaLite, Story } from '../types'
+import type { SessionMetaLite } from '../types'
 import { ChangesPanel } from './story-panels/ChangesPanel'
 import { EmptyPanel } from './story-panels/EmptyPanel'
 import { RelatedPanel } from './story-panels/RelatedPanel'
@@ -34,12 +26,13 @@ import { RunsPanel } from './story-panels/RunsPanel'
 
 type RightTab = 'terminal' | 'changes' | 'runs' | 'related'
 
+/** Read-only story detail. AI-native posture: AC checkboxes display state
+ *  only, comments show in-feed but there's no composer. Status moves /
+ *  AC checks / comments flow through the MCP toolchain. */
 export default function CurrentStory() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { user } = useAuth()
 
-  const { data: story, mutate: mutateStory, error } = useStory(id)
+  const { data: story, error } = useStory(id)
   const { data: activity } = useStoryActivity(id)
   const { data: relations } = useStoryRelations(id)
   const { data: epics } = useEpics()
@@ -54,18 +47,17 @@ export default function CurrentStory() {
 
   const [tab, setTab] = useState<RightTab>('terminal')
   const [activeSession, setActiveSession] = useState<string | null>(null)
-  const [composer, setComposer] = useState('')
 
   const epic = useMemo(
     () => (story?.epic_id && epics ? epics.find((e) => e.id === story.epic_id) : undefined),
     [story?.epic_id, epics],
   )
 
-  // Sessions linked to this story. Prefer the live SSE grid tile (has
-  // last_heartbeat_at + agent_kind), fall back to the REST list when the
-  // stream hasn't filled yet.
   const storySessions = useMemo(() => {
-    const byId = new Map<string, { id: string; agent_kind: string; cwd: string; ended: boolean }>()
+    const byId = new Map<
+      string,
+      { id: string; agent_kind: string; cwd: string; ended: boolean }
+    >()
     for (const t of tiles) {
       if (t.detected_story_id === id) {
         byId.set(t.session_id, {
@@ -89,7 +81,6 @@ export default function CurrentStory() {
     return Array.from(byId.values()).sort((a, b) => Number(a.ended) - Number(b.ended))
   }, [tiles, sessions, id])
 
-  // Default the terminal tab to the first live session.
   if (activeSession === null && storySessions.length > 0) {
     setActiveSession(storySessions[0].id)
   }
@@ -117,30 +108,6 @@ export default function CurrentStory() {
 
   const acDone = story.acceptance_criteria.filter((a) => a.done).length
   const acTotal = story.acceptance_criteria.length
-
-  const toggleAc = async (index: number) => {
-    const next = story.acceptance_criteria.map((a, i) =>
-      i === index ? { ...a, done: !a.done } : a,
-    )
-    mutateStory({ ...story, acceptance_criteria: next } as Story, { revalidate: false })
-    try {
-      await patchStory(story.id, { acceptance_criteria: next })
-    } catch {
-      mutateStory(story, { revalidate: false })
-    }
-  }
-
-  const submitComment = async () => {
-    const body = composer.trim()
-    if (!body || !story) return
-    setComposer('')
-    try {
-      await postComment(story.id, body)
-      // optimistic-ish: SWR revalidates both comments + activity
-    } catch {
-      setComposer(body)
-    }
-  }
 
   return (
     <div className="story-split" style={{ height: '100%', padding: 18, minHeight: 0 }}>
@@ -203,7 +170,7 @@ export default function CurrentStory() {
           )}
         </Card>
 
-        {/* AC checklist */}
+        {/* AC checklist — display only */}
         <Card style={{ padding: 16 }}>
           <div
             style={{
@@ -227,6 +194,16 @@ export default function CurrentStory() {
                 {acDone} / {acTotal}
               </div>
             )}
+            <div style={{ flex: 1 }} />
+            <span
+              style={{
+                font: '400 11px/1 var(--font)',
+                color: 'var(--fg-4)',
+              }}
+              title="Toggle AC items via the team-presence MCP (tp.ac.check / /tp-groom-ac)"
+            >
+              /tp-groom-ac
+            </span>
           </div>
           {acTotal > 0 && <ProgressBar value={acDone} total={acTotal} />}
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -241,27 +218,21 @@ export default function CurrentStory() {
               </div>
             )}
             {story.acceptance_criteria.map((a, i) => (
-              <label
+              <div
                 key={i}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 8,
                   padding: '4px 0',
-                  cursor: 'pointer',
                   font: '400 13px/1.45 var(--font)',
                   color: a.done ? 'var(--fg-3)' : 'var(--hv-fg)',
                   textDecoration: a.done ? 'line-through' : 'none',
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={a.done}
-                  onChange={() => toggleAc(i)}
-                  style={{ marginTop: 3 }}
-                />
-                <span>{a.text}</span>
-              </label>
+                <AcGlyph done={a.done} />
+                <span style={{ flex: 1, whiteSpace: 'pre-wrap' }}>{a.text}</span>
+              </div>
             ))}
           </div>
         </Card>
@@ -368,44 +339,10 @@ export default function CurrentStory() {
                 color: 'var(--fg-3)',
               }}
             >
-              {comments.length} comment{comments.length === 1 ? '' : 's'} also logged above
+              {comments.length} comment{comments.length === 1 ? '' : 's'} — post new ones via
+              <span className="mono"> /tp-comment</span> (see docs/ai-native.md)
             </div>
           )}
-        </Card>
-
-        {/* Composer */}
-        <Card style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {user && <Avatar user={userToAvatar(user, 'active')} size={24} />}
-            <textarea
-              className="input"
-              placeholder="Leave a comment — @mention a teammate"
-              value={composer}
-              onChange={(e) => setComposer(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault()
-                  submitComment()
-                }
-              }}
-              rows={2}
-              style={{ resize: 'vertical' }}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1 }} />
-            <span style={{ font: '400 11px/1 var(--font)', color: 'var(--fg-3)' }}>
-              <Kbd>⌘</Kbd> <Kbd>↵</Kbd> to send
-            </span>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={!composer.trim()}
-              onClick={submitComment}
-            >
-              Comment
-            </Button>
-          </div>
         </Card>
       </div>
 
@@ -419,7 +356,6 @@ export default function CurrentStory() {
           overflow: 'hidden',
         }}
       >
-        {/* Tabs */}
         <div
           style={{
             display: 'flex',
@@ -457,13 +393,12 @@ export default function CurrentStory() {
           ))}
         </div>
 
-        {/* Content */}
         <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
           {tab === 'terminal' && (
             storySessions.length === 0 ? (
               <EmptyPanel
                 title="No agent attached"
-                hint="Kick off a Claude Code session in a repo where the branch matches the story id, or 改派 an existing session here."
+                hint="Start a Claude Code session on a branch matching this story id, or reassign an existing session via /tp-reassign."
                 icon="terminal"
               />
             ) : (
@@ -522,16 +457,30 @@ export default function CurrentStory() {
           {tab === 'related' && <RelatedPanel story={story} />}
         </div>
       </div>
-
-      {/* Nav back affordance */}
-      <div style={{ display: 'none' }}>
-        <button type="button" onClick={() => navigate('/')}>Back to Board</button>
-        <Icon name="arrow" size={12} />
-      </div>
-
-      {/* Ensure SWR key helpers aren't tree-shaken accidentally */}
-      <span style={{ display: 'none' }}>{storyCommentsKey(story.id)}</span>
     </div>
+  )
+}
+
+function AcGlyph({ done }: { done: boolean }) {
+  if (done) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" style={{ marginTop: 3, flexShrink: 0 }}>
+        <circle cx="7" cy="7" r="6.5" fill="var(--success)" />
+        <polyline
+          points="4,7.2 6.2,9.4 10.2,5"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" style={{ marginTop: 3, flexShrink: 0 }}>
+      <circle cx="7" cy="7" r="6" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" />
+    </svg>
   )
 }
 

@@ -119,7 +119,7 @@ X-Actor-Kind: agent
 Content-Type: application/json
 ```
 
-See §7 below for the endpoint list, or read
+See §8 below for the endpoint list, or read
 `crates/server/src/lib.rs::build_router` as the authoritative source.
 
 ---
@@ -161,10 +161,144 @@ session's duration.
 
 ---
 
-## 5. Verify the connection
+## 5. Wire your Claude Code session into the live stream
+
+§4 authenticates you against the HTTP API / MCP; this section wires the
+**current Claude Code session on your laptop** into the team-presence
+Stream page so teammates (and AI observers watching `/stream`) can see
+what you're working on. Two moving parts:
+
+1. **Claude Code hooks** — `SessionStart` + `Stop` scripts in
+   `~/.claude/hooks/` that forward metadata to a Unix socket.
+2. **Collector daemon** — a long-running `team-presence start` process
+   that tails your transcript file and streams frames to the server
+   over WebSocket.
+
+You can drive this entirely through the `/tp-connect-machine` skill
+(see §7), which wraps the following MCP tools + shell commands. Each
+step has its equivalent MCP call and equivalent shell call; pick whichever
+fits your client.
+
+### 5.1 Status check
+
+```jsonc
+// MCP
+{"jsonrpc":"2.0","id":10,"method":"tools/call",
+ "params":{"name":"tp_collector_status","arguments":{}}}
+```
+
+or shell:
+
+```bash
+cd $TP_REPO
+cargo run --bin team-presence -- status
+```
+
+Expected output when ready: `status=logged_in`, `muted=false`,
+credentials pointing at the right server.
+
+### 5.2 Install Claude Code hooks
+
+```jsonc
+// MCP
+{"jsonrpc":"2.0","id":11,"method":"tools/call",
+ "params":{"name":"tp_collector_install_hooks","arguments":{"force":false}}}
+```
+
+or shell:
+
+```bash
+cd $TP_REPO
+cargo run --bin team-presence -- install-hooks
+```
+
+This drops two scripts into `~/.claude/hooks/`:
+
+- `team-presence-session-start.sh` — fires when Claude Code opens a
+  new session; forwards `{session_id, transcript_path, cwd}` to
+  `/tmp/team-presence-<uid>.sock`.
+- `team-presence-stop.sh` — fires at the end of each assistant turn;
+  forwards the session id + stop metadata so the collector knows the
+  session is alive.
+
+The hook scripts are registered in `~/.claude/settings.json` under
+`SessionStart` and `Stop`. The installer is idempotent; pass
+`force=true` / `--force` only if you need to overwrite hand-edited
+scripts.
+
+### 5.3 Launch the collector daemon
+
+The collector binary is the same crate as the `login` / `install-hooks`
+subcommands. Run it in a **persistent** shell (or under `nohup` /
+`launchd` / `systemd --user`):
+
+```bash
+cd $TP_REPO
+cargo run --bin team-presence -- start
+```
+
+Stays running, tails transcripts, streams frames over WebSocket. Logs
+to stderr. You should see:
+
+```
+INFO listening for hook events  server=http://localhost:8080
+INFO connecting                 url=ws://localhost:8080/ws/collector
+INFO collector connected        collector_token_id=<uuid>
+```
+
+The `team-presence start` process must stay alive for the whole
+session. Closing that shell = stream goes dark.
+
+### 5.4 Verify
+
+Open `http://localhost:5173/stream` in a browser. Within ~10 seconds
+of starting a new Claude Code session (or issuing a prompt in the
+current session so the `Stop` hook fires), you should see a live
+terminal tile for that session.
+
+No terminal appearing? Re-run the status check in §5.1 and double-
+check:
+
+- `ls ~/.claude/hooks/team-presence-*.sh` — hooks exist
+- `ls /tmp/team-presence-$UID.sock` — collector socket exists
+- Tail the `team-presence start` stderr for `collector connected`
+
+### 5.5 Session control
+
+When you need to silence content frames without killing the daemon (e.g.
+handling a private chat):
+
+```jsonc
+{"jsonrpc":"2.0","id":12,"method":"tools/call",
+ "params":{"name":"tp_collector_mute","arguments":{}}}
+// then
+{"jsonrpc":"2.0","id":13,"method":"tools/call",
+ "params":{"name":"tp_collector_unmute","arguments":{}}}
+```
+
+Mute suppresses `session_content` frames but keeps heartbeats +
+metadata flowing, so teammates still see that you're online; they
+just don't see what you're typing.
+
+To fully disconnect a laptop:
+
+```bash
+# Stop the daemon (Ctrl-C the `team-presence start` shell, or:)
+pkill -f 'team-presence start'
+
+# Remove the hooks (MCP tool or shell):
+cargo run --bin team-presence -- uninstall-hooks
+```
+
+Credentials persist in the keyring until you run `team-presence logout`
+(separate command).
+
+---
+
+## 6. Verify the MCP connection
 
 After your MCP client loads, issue a `tools/list`; you should see 30
-tools (see §7). Then run the smoke tool:
+tools (see §8). Then run the smoke tool:
 
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"tp_whoami","arguments":{}}}
@@ -181,7 +315,7 @@ stderr — tp-mcp logs to stderr (stdout is reserved for JSON-RPC).
 
 ---
 
-## 6. Use the skills
+## 7. Use the skills
 
 Seven skills live at `$TP_REPO/.claude/skills/tp-*/SKILL.md`. Each file
 is a self-contained procedural prompt that guides one workflow:
@@ -206,12 +340,12 @@ is a self-contained procedural prompt that guides one workflow:
    slash-commands / skills / composites, ship the SKILL.md bodies as
    native primitives.
 
-All of them are just orchestration over the MCP tools in §7. Nothing in
+All of them are just orchestration over the MCP tools in §8. Nothing in
 a skill is required to use team-presence — they are guidance, not gates.
 
 ---
 
-## 7. Canonical tool surface (30 tools)
+## 8. Canonical tool surface (30 tools)
 
 Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 0-based. Story statuses are: `todo | in_progress | blocked | review | done`.
@@ -278,7 +412,7 @@ Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 
 ---
 
-## 8. Invariants to respect
+## 9. Invariants to respect
 
 - **Audit**: every write must carry `X-Actor-Kind: agent`. tp-mcp sends
   it automatically; do not strip it if you proxy.
@@ -293,7 +427,7 @@ Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 
 ---
 
-## 9. Minimum viable "hello world"
+## 10. Minimum viable "hello world"
 
 After building + authenticating, this sequence should succeed:
 
@@ -320,7 +454,7 @@ by calling `tp_story_claim` on an unassigned todo, or run the
 
 ---
 
-## 10. Further reading
+## 11. Further reading
 
 - `$TP_REPO/docs/ai-native.md` — human-written usage guide, overlaps
   heavily with this file.

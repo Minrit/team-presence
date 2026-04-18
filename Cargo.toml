@@ -34,3 +34,13 @@ hex = "0.4"
 rand = "0.8"
 time = "0.3"
 serde_yaml = "0.9"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+keyring = { version = "3", default-features = false, features = ["apple-native", "sync-secret-service", "linux-native", "windows-native"] }
+directories = "5"
+libc = "0.2"
+notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+tempfile = "3"
+url = "2"

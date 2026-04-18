@@ -28,6 +28,9 @@ hex.workspace = true
 rand.workspace = true
 time.workspace = true
 serde_yaml.workspace = true
+async-stream.workspace = true
+tokio-stream.workspace = true
+futures-util.workspace = true
 
 [lib]
 path = "src/lib.rs"

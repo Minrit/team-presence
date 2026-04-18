@@ -21,7 +21,7 @@ thiserror = "1"
 anyhow = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "ws"] }
 axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
 tower = "0.5"
 tower-http = { version = "0.5", features = ["trace", "cors"] }
@@ -43,3 +43,5 @@ tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 futures-util = "0.3"
 tempfile = "3"
 url = "2"
+async-stream = "0.3"
+tokio-stream = "0.1"

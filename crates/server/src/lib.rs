@@ -1,10 +1,13 @@
 pub mod auth;
 pub mod collectors;
 pub mod error;
+pub mod session;
+pub mod sse;
 pub mod state;
 pub mod stories;
 pub mod tasks;
 pub mod telemetry;
+pub mod ws;
 
 use axum::{
     middleware,
@@ -36,10 +39,18 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/tasks/:id",
             patch(tasks::handlers::patch).delete(tasks::handlers::delete),
         )
+        // Viewer SSE (browser JWT Bearer)
+        .route("/sse/room/:session_id", get(sse::room::handler))
+        .route("/sse/grid", get(sse::grid::handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_identity,
         ));
+
+    // Collector WS does its own bearer check because axum middleware can't
+    // run on the upgraded socket (we need the collector_token_id, not just
+    // user_id, on the session's persistence path).
+    let collector_ws = Router::new().route("/ws/collector", get(ws::collector::ws_handler));
 
     let public = Router::new()
         .route("/health", get(health))
@@ -48,7 +59,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/auth/refresh", post(auth::handlers::refresh))
         .route("/api/v1/auth/logout", post(auth::handlers::logout));
 
-    public.merge(protected).with_state(state)
+    public
+        .merge(protected)
+        .merge(collector_ws)
+        .with_state(state)
 }
 
 async fn health() -> &'static str {

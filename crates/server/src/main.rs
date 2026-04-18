@@ -1,4 +1,4 @@
-use team_presence_server::{build_router, state::AppState, telemetry};
+use team_presence_server::{build_router, session::reaper, state::AppState, telemetry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -6,10 +6,15 @@ async fn main() -> anyhow::Result<()> {
 
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://tp:tp@localhost:5433/team_presence".into());
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6380".into());
 
-    let state = AppState::new(&database_url).await?;
+    let state = AppState::new(&database_url, &redis_url).await?;
     sqlx::migrate!("./migrations").run(&state.db).await?;
     tracing::info!(component = "server", phase = "migrations_applied", "database migrations up to date");
+
+    reaper::spawn(state.clone());
+    tracing::info!(component = "server", phase = "reaper_spawned", "session reaper running");
 
     let app = build_router(state);
 

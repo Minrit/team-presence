@@ -27,6 +27,7 @@ sha2.workspace = true
 hex.workspace = true
 rand.workspace = true
 time.workspace = true
+serde_yaml.workspace = true
 
 [lib]
 path = "src/lib.rs"
@@ -34,3 +35,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "server"
 path = "src/main.rs"
+
+[[bin]]
+name = "import-bmad"
+path = "src/bin/import_bmad.rs"

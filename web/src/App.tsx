@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import { AppShell } from './shell/AppShell'
+import Board from './pages/Board'
 import Kanban from './pages/Kanban'
 import Grid from './pages/Grid'
 import Room from './pages/Room'
@@ -18,30 +19,14 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route element={<Shell />}>
-            <Route
-              path="/"
-              element={
-                <Placeholder
-                  title="Current story"
-                  hint="Pick a story from Board or Backlog to open the split view. Unit 15 ships this."
-                />
-              }
-            />
+            <Route path="/" element={<Board />} />
+            <Route path="/board" element={<Board />} />
             <Route
               path="/story/:id"
               element={
                 <Placeholder
                   title="Current story"
                   hint="Split view with live terminal + activity timeline. Unit 15 ships this."
-                />
-              }
-            />
-            <Route
-              path="/board"
-              element={
-                <Placeholder
-                  title="Board"
-                  hint="4-column Kanban + blocked rail. Unit 16 ships this. (Legacy 3-col Kanban still lives at /kanban.)"
                 />
               }
             />

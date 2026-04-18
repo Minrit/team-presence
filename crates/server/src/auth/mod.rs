@@ -10,8 +10,10 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use model::Identity;
+use model::{ActorKind, Identity};
 use sha2::{Digest, Sha256};
+
+const ACTOR_KIND_HEADER: &str = "x-actor-kind";
 
 /// Middleware: extracts identity from either a Bearer JWT (browser access token)
 /// or a Bearer collector-token (opaque, hashed in DB).
@@ -31,10 +33,27 @@ pub async fn require_identity(
         .trim()
         .to_string();
 
+    // `X-Actor-Kind: agent|system` marks activity audit rows as non-human.
+    // Absence / unknown value defaults to `user` — zero-impact on existing
+    // clients. This is an audit hint, not a security boundary; upstream
+    // token check still applies.
+    let actor_kind = req
+        .headers()
+        .get(ACTOR_KIND_HEADER)
+        .and_then(|h| h.to_str().ok())
+        .map(str::trim)
+        .map(str::to_ascii_lowercase);
+    let actor_kind = match actor_kind.as_deref() {
+        Some("agent") => ActorKind::Agent,
+        Some("system") => ActorKind::System,
+        _ => ActorKind::User,
+    };
+
     // Try JWT first (short-lived, cryptographic). Falls through to DB lookup if invalid.
     if let Ok(claims) = jwt::decode_access(&state.jwt.secret, &bearer) {
         req.extensions_mut().insert(Identity {
             user_id: claims.sub,
+            actor_kind,
         });
         return Ok(next.run(req).await);
     }
@@ -56,7 +75,10 @@ pub async fn require_identity(
         .execute(&state.db)
         .await;
 
-    req.extensions_mut().insert(Identity { user_id });
+    req.extensions_mut().insert(Identity {
+        user_id,
+        actor_kind,
+    });
     Ok(next.run(req).await)
 }
 

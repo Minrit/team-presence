@@ -9,10 +9,7 @@ use crate::{
     auth::model::Identity,
     error::AppError,
     state::AppState,
-    stories::{
-        activity,
-        model::ActivityActor,
-    },
+    stories::activity,
 };
 
 const BODY_MAX: usize = 10_000;
@@ -72,7 +69,7 @@ pub async fn create(
         &state.db,
         Some(&state.redis),
         story_id,
-        ActivityActor::User,
+        identity.activity_actor(),
         &identity.user_id.to_string(),
         activity::COMMENT,
         preview(&body, 140).as_str(),

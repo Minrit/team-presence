@@ -4,6 +4,7 @@ members = [
     "crates/server",
     "crates/collector",
     "crates/shared-types",
+    "crates/tp-mcp",
 ]
 
 [workspace.package]

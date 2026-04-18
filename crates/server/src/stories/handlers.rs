@@ -7,9 +7,8 @@ use uuid::Uuid;
 
 use super::activity;
 use super::model::{
-    ActivityActor, CreateRelationRequest, CreateStoryRequest, ListActivityQuery,
-    ListStoriesQuery, PatchStoryRequest, RelationKind, Story, StoryActivity, StoryRelation,
-    StoryStatus,
+    CreateRelationRequest, CreateStoryRequest, ListActivityQuery, ListStoriesQuery,
+    PatchStoryRequest, RelationKind, Story, StoryActivity, StoryRelation, StoryStatus,
 };
 use super::repo::{
     self, BRANCH_MAX_BYTES, FIELD_MAX_BYTES, NAME_MAX_BYTES, PR_REF_MAX_BYTES,
@@ -57,7 +56,7 @@ pub async fn create(
         &state.db,
         Some(&state.redis),
         story.id,
-        ActivityActor::User,
+        identity.activity_actor(),
         &identity.user_id.to_string(),
         activity::CREATE,
         &format!("created story '{}'", story.name),
@@ -137,7 +136,7 @@ pub async fn patch(
                 &state.db,
                 Some(&state.redis),
                 story.id,
-                ActivityActor::User,
+                identity.activity_actor(),
                 &identity.user_id.to_string(),
                 activity::STATUS_CHANGE,
                 &format!(
@@ -157,7 +156,7 @@ pub async fn patch(
             &state.db,
             Some(&state.redis),
             story.id,
-            ActivityActor::User,
+            identity.activity_actor(),
             &identity.user_id.to_string(),
             activity::CLAIM,
             "claimed story",
@@ -182,7 +181,7 @@ pub async fn patch(
                 &state.db,
                 Some(&state.redis),
                 story.id,
-                ActivityActor::User,
+                identity.activity_actor(),
                 &identity.user_id.to_string(),
                 activity::EDIT,
                 "edited story",
@@ -261,7 +260,7 @@ pub async fn create_relation(
         &state.db,
         Some(&state.redis),
         id,
-        ActivityActor::User,
+        identity.activity_actor(),
         &identity.user_id.to_string(),
         activity::RELATION,
         &format!("added {:?} → {}", req.kind, req.to),
@@ -287,7 +286,7 @@ pub async fn delete_relation(
         &state.db,
         Some(&state.redis),
         id,
-        ActivityActor::User,
+        identity.activity_actor(),
         &identity.user_id.to_string(),
         activity::RELATION,
         &format!("removed {:?} → {}", kind, target),

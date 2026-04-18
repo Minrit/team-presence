@@ -2,9 +2,29 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::stories::model::ActivityActor;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActorKind {
+    User,
+    Agent,
+    System,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Identity {
     pub user_id: Uuid,
+    pub actor_kind: ActorKind,
+}
+
+impl Identity {
+    pub fn activity_actor(&self) -> ActivityActor {
+        match self.actor_kind {
+            ActorKind::User => ActivityActor::User,
+            ActorKind::Agent => ActivityActor::Agent,
+            ActorKind::System => ActivityActor::System,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

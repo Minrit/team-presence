@@ -3,12 +3,14 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { Story, StoryStatus } from '../types'
 import { STATUS_LABEL } from '../types'
 import StoryCard from './StoryCard'
+import type { StoryActivity } from '../hooks/useStoryActivity'
 
 export interface KanbanColumnProps {
   status: StoryStatus
   stories: Story[]
   onOpenStory: (id: string) => void
   onCreateStory: (status: StoryStatus) => void
+  activity: Map<string, StoryActivity>
 }
 
 export default function KanbanColumn({
@@ -16,6 +18,7 @@ export default function KanbanColumn({
   stories,
   onOpenStory,
   onCreateStory,
+  activity,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` })
   const ids = stories.map((s) => s.id)
@@ -49,7 +52,12 @@ export default function KanbanColumn({
             </p>
           ) : (
             stories.map((s) => (
-              <StoryCard key={s.id} story={s} onOpen={() => onOpenStory(s.id)} />
+              <StoryCard
+                key={s.id}
+                story={s}
+                onOpen={() => onOpenStory(s.id)}
+                activity={activity.get(s.id)}
+              />
             ))
           )}
         </div>

@@ -1,13 +1,16 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Link } from 'react-router-dom'
 import type { Story } from '../types'
+import type { StoryActivity } from '../hooks/useStoryActivity'
 
 export interface StoryCardProps {
   story: Story
   onOpen: () => void
+  activity?: StoryActivity
 }
 
-export default function StoryCard({ story, onOpen }: StoryCardProps) {
+export default function StoryCard({ story, onOpen, activity }: StoryCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: story.id,
   })
@@ -17,6 +20,9 @@ export default function StoryCard({ story, onOpen }: StoryCardProps) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+
+  const active = activity?.active_count ?? 0
+  const firstSession = activity?.session_ids[0]
 
   return (
     <div
@@ -31,7 +37,19 @@ export default function StoryCard({ story, onOpen }: StoryCardProps) {
         className="cursor-grab active:cursor-grabbing"
         aria-label="Drag story"
       >
-        <p className="font-medium text-sm leading-tight break-words">{story.title}</p>
+        <div className="flex items-start gap-2">
+          {active > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-400 px-1.5 py-0.5 text-[10px] font-medium"
+              title={`${active} live session${active > 1 ? 's' : ''}`}
+              aria-label="live"
+            >
+              <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-red-500 animate-pulse" />
+              {active > 1 ? `LIVE · ${active}` : 'LIVE'}
+            </span>
+          )}
+          <p className="font-medium text-sm leading-tight break-words">{story.title}</p>
+        </div>
         <div className="flex items-center gap-2 mt-2 text-xs text-muted">
           {story.repo && (
             <span className="px-1.5 py-0.5 rounded bg-border/40">{story.repo}</span>
@@ -39,13 +57,23 @@ export default function StoryCard({ story, onOpen }: StoryCardProps) {
           <span>updated {relative(story.updated_at)}</span>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="mt-2 text-xs text-accent hover:underline"
-      >
-        Open
-      </button>
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-xs text-accent hover:underline"
+        >
+          Open
+        </button>
+        {firstSession && (
+          <Link
+            to={`/room/${firstSession}`}
+            className="text-xs text-red-400 hover:underline"
+          >
+            Watch live →
+          </Link>
+        )}
+      </div>
     </div>
   )
 }

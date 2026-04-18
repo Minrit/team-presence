@@ -14,6 +14,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use session::handlers as sessions;
 use state::AppState;
 
 pub fn build_router(state: AppState) -> Router {
@@ -39,6 +40,9 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/tasks/:id",
             patch(tasks::handlers::patch).delete(tasks::handlers::delete),
         )
+        // Sessions metadata (for 改派 reassign and list-active)
+        .route("/api/v1/sessions", get(sessions::list_active))
+        .route("/api/v1/sessions/:id", patch(sessions::reassign))
         // Viewer SSE (browser JWT Bearer)
         .route("/sse/room/:session_id", get(sse::room::handler))
         .route("/sse/grid", get(sse::grid::handler))

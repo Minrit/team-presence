@@ -11,10 +11,12 @@ import StoryDetailDialog from '../components/StoryDetailDialog'
 import TopNav from '../components/TopNav'
 import { createStory, patchStory, useStories } from '../stories'
 import { STATUSES, type Story, type StoryStatus } from '../types'
+import { useStoryActivity } from '../hooks/useStoryActivity'
 
 export default function Kanban() {
   const { data: stories, error, isLoading, mutate } = useStories()
   const [openId, setOpenId] = useState<string | null>(null)
+  const activity = useStoryActivity()
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -81,6 +83,7 @@ export default function Kanban() {
                   stories={grouped[s]}
                   onOpenStory={setOpenId}
                   onCreateStory={createInColumn}
+                  activity={activity}
                 />
               ))}
             </div>

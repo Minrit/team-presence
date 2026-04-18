@@ -28,7 +28,7 @@ use uuid::Uuid;
 use crate::{
     auth::sha256_hex,
     session::{
-        emit,
+        emit, link,
         model::GridTile,
         repo::{bump_activity, bump_heartbeat, mark_ended, upsert_session_start},
     },
@@ -234,7 +234,34 @@ async fn handle_text(state: &AppState, auth: &CollectorAuth, text: &str) -> Opti
             .await;
 
             match upsert {
-                Ok(meta) => {
+                Ok(mut meta) => {
+                    // Attempt regex-based story auto-link on fresh sessions.
+                    // Only runs when the row doesn't already have an assignment
+                    // (so a prior 改派 can't be overwritten by a reconnect).
+                    if meta.detected_story_id.is_none() {
+                        if let Ok(Some(sid)) = link::resolve_story_id(
+                            &state.db,
+                            git_branch.as_deref(),
+                            Some(cwd.as_str()),
+                        )
+                        .await
+                        {
+                            let updated: Option<crate::session::model::SessionMeta> =
+                                sqlx::query_as(
+                                    "UPDATE sessions_meta SET detected_story_id = $2 \
+                                     WHERE id = $1 AND detected_story_id IS NULL RETURNING *",
+                                )
+                                .bind(meta.id)
+                                .bind(sid)
+                                .fetch_optional(&state.db)
+                                .await
+                                .ok()
+                                .flatten();
+                            if let Some(m) = updated {
+                                meta = m;
+                            }
+                        }
+                    }
                     let tile = GridTile::from_meta(&meta, false);
                     emit::emit_frame(&state.redis, *session_id, &frame, Some(&tile)).await;
                 }

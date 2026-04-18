@@ -2,7 +2,7 @@ use clap::Parser;
 use team_presence_collector::{
     cli::{Cli, Command, InstallHooksArgs, LoginArgs},
     client::ApiClient,
-    config, consent, credentials, hooks, mute, telemetry,
+    config, consent, credentials, hooks, mute, start, telemetry,
 };
 
 #[tokio::main]
@@ -79,22 +79,7 @@ async fn cmd_start() -> anyhow::Result<()> {
             "no credentials — run `team-presence login --server <url> --email <you>` first"
         )
     })?;
-    tracing::info!(
-        component = "collector.start",
-        phase = "start",
-        server = %creds.server,
-        collector_id = %creds.collector_id,
-        muted = mute::is_muted(),
-        "phase B/C not yet implemented — socket listener + WS client land in follow-up commits"
-    );
-    println!(
-        "collector ready (user={} id={} muted={}).",
-        creds.user_email,
-        creds.collector_id,
-        mute::is_muted(),
-    );
-    println!("NOTE: daemon loop (hook socket + transcript tail + WS) ships in Unit 6 Phase B/C.");
-    Ok(())
+    start::run_offline(creds).await
 }
 
 fn cmd_status() -> anyhow::Result<()> {

@@ -20,7 +20,6 @@ reqwest.workspace = true
 keyring.workspace = true
 directories.workspace = true
 libc.workspace = true
-notify.workspace = true
 tokio-tungstenite.workspace = true
 futures-util.workspace = true
 url.workspace = true

@@ -39,7 +39,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 keyring = { version = "3", default-features = false, features = ["apple-native", "sync-secret-service", "linux-native", "windows-native"] }
 directories = "5"
 libc = "0.2"
-notify = { version = "6", default-features = false, features = ["macos_kqueue"] }
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 futures-util = "0.3"
 tempfile = "3"

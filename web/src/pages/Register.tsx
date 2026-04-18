@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ApiError, bootstrap } from '../api'
 import { useAuth } from '../auth'
+import { Button } from '../design/Button'
 import { AuthShell, Field } from './Login'
 
 export default function Register() {
@@ -39,12 +40,20 @@ export default function Register() {
 
   return (
     <AuthShell>
-      <h1 className="text-2xl font-semibold mb-1">Create the first account</h1>
-      <p className="text-sm text-muted mb-6">
-        This endpoint only works once — the first user becomes an admin; all members
-        are admins after that.
+      <h1 style={{ font: '600 22px/1.2 var(--font)', marginBottom: 2 }}>
+        Create the first account
+      </h1>
+      <p
+        style={{
+          font: '400 12.5px/1.5 var(--font)',
+          color: 'var(--fg-3)',
+          marginBottom: 18,
+        }}
+      >
+        This endpoint only works once — the first user becomes an admin; all members are
+        admins after that.
       </p>
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label="Display name">
           <input
             type="text"
@@ -75,14 +84,22 @@ export default function Register() {
             className="input"
           />
         </Field>
-        {err && <p className="text-sm text-red-500">{err}</p>}
-        <button type="submit" disabled={busy} className="btn-primary w-full">
+        {err && (
+          <p style={{ font: '400 12.5px/1.4 var(--font)', color: 'var(--danger)' }}>{err}</p>
+        )}
+        <Button type="submit" disabled={busy} size="lg" style={{ width: '100%' }}>
           {busy ? 'Creating…' : 'Bootstrap team'}
-        </button>
+        </Button>
       </form>
-      <p className="mt-6 text-sm text-muted">
+      <p
+        style={{
+          marginTop: 18,
+          font: '400 13px/1.4 var(--font)',
+          color: 'var(--fg-3)',
+        }}
+      >
         Already have an account?{' '}
-        <Link to="/login" className="text-accent hover:underline">
+        <Link to="/login" style={{ color: 'var(--hv-accent)' }}>
           Sign in
         </Link>
       </p>

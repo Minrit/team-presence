@@ -5,7 +5,7 @@ async fn main() -> anyhow::Result<()> {
     telemetry::init();
 
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://tp:tp@localhost:5432/team_presence".into());
+        .unwrap_or_else(|_| "postgres://tp:tp@localhost:5433/team_presence".into());
 
     let state = AppState::new(&database_url).await?;
     sqlx::migrate!("./migrations").run(&state.db).await?;

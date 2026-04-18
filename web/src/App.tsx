@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import Kanban from './pages/Kanban'
+import Grid from './pages/Grid'
+import Room from './pages/Room'
 import Login from './pages/Login'
 import Register from './pages/Register'
 
@@ -16,6 +18,22 @@ export default function App() {
             element={
               <Protected>
                 <Kanban />
+              </Protected>
+            }
+          />
+          <Route
+            path="/live"
+            element={
+              <Protected>
+                <Grid />
+              </Protected>
+            }
+          />
+          <Route
+            path="/room/:id"
+            element={
+              <Protected>
+                <Room />
               </Protected>
             }
           />

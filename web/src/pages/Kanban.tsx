@@ -8,13 +8,12 @@ import {
 } from '@dnd-kit/core'
 import KanbanColumn from '../components/KanbanColumn'
 import StoryDetailDialog from '../components/StoryDetailDialog'
+import TopNav from '../components/TopNav'
 import { createStory, patchStory, useStories } from '../stories'
 import { STATUSES, type Story, type StoryStatus } from '../types'
-import { useAuth } from '../auth'
 
 export default function Kanban() {
   const { data: stories, error, isLoading, mutate } = useStories()
-  const { user, signOut } = useAuth()
   const [openId, setOpenId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -67,28 +66,7 @@ export default function Kanban() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card">
-        <div className="flex items-center gap-6">
-          <h1 className="font-semibold">team-presence</h1>
-          <nav className="text-sm text-muted flex gap-4">
-            <span className="text-fg">Kanban</span>
-            <span className="opacity-60 cursor-not-allowed" title="Live grid ships in Unit 8">
-              Live
-            </span>
-          </nav>
-        </div>
-        <div className="text-sm text-muted flex items-center gap-3">
-          <span>{user?.display_name ?? user?.email}</span>
-          <button
-            type="button"
-            onClick={signOut}
-            className="hover:text-fg"
-            aria-label="Sign out"
-          >
-            Sign out
-          </button>
-        </div>
-      </header>
+      <TopNav current="kanban" />
 
       <main className="flex-1 p-6">
         {isLoading && <p className="text-muted">Loading…</p>}

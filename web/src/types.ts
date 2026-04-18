@@ -42,3 +42,51 @@ export const STATUS_LABEL: Record<StoryStatus, string> = {
   doing: 'Doing',
   done: 'Done',
 }
+
+// Live session wire types — mirror crates/server/src/session/model.rs GridTile
+// and shared-types Frame. Snake_case intentional.
+
+export type CliKind = 'claude_code'
+export type ContentRole = 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'meta'
+
+export interface GridTile {
+  session_id: string
+  user_id: string
+  cli: CliKind | string
+  cwd: string
+  detected_story_id: string | null
+  last_activity_at: string
+  ended_at: string | null
+  muted: boolean
+}
+
+export type RoomFrame =
+  | {
+      type: 'session_start'
+      session_id: string
+      cli: CliKind
+      cwd: string
+      git_remote: string | null
+      git_branch: string | null
+      transcript_path: string | null
+      started_at: string
+    }
+  | {
+      type: 'session_content'
+      session_id: string
+      role: ContentRole
+      text: string
+      ts: string
+    }
+  | {
+      type: 'session_end'
+      session_id: string
+      ended_at: string
+      exit_code: number | null
+    }
+  | {
+      type: 'heartbeat'
+      sent_at: string
+      active_session_ids: string[]
+      muted: boolean
+    }

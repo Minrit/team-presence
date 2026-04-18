@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod collectors;
 pub mod comments;
+pub mod downloads;
 pub mod epics;
 pub mod error;
 pub mod session;
@@ -100,9 +101,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/auth/refresh", post(auth::handlers::refresh))
         .route("/api/v1/auth/logout", post(auth::handlers::logout));
 
+    // Unauthenticated binary distribution endpoints — intentionally
+    // merged OUTSIDE `protected` so `curl | sh` works. See plan 010.
+    let downloads = downloads::router::<AppState>();
+
     public
         .merge(protected)
         .merge(collector_ws)
+        .merge(downloads)
         .with_state(state)
 }
 

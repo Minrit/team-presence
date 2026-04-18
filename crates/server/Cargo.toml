@@ -34,6 +34,13 @@ futures-util.workspace = true
 regex.workspace = true
 once_cell.workspace = true
 
+[dev-dependencies]
+tempfile.workspace = true
+# `ServiceExt::oneshot` for in-process route testing
+tower = { version = "0.5", features = ["util"] }
+# sha2 is already a runtime dep, but declared here too so tests can rely on it.
+sha2.workspace = true
+
 [lib]
 path = "src/lib.rs"
 

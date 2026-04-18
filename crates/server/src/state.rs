@@ -1,11 +1,15 @@
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
     pub redis: redis::Client,
     pub jwt: Arc<JwtConfig>,
+    /// Directory that holds the tp-mcp release artifacts + `manifest.json`
+    /// served at `/download/*`. Defaults to `./downloads` relative to the
+    /// server's CWD; override via `TP_DOWNLOADS_DIR`. See plan 010.
+    pub downloads_dir: Arc<PathBuf>,
 }
 
 pub struct JwtConfig {
@@ -32,6 +36,10 @@ impl AppState {
             "dev-only-not-for-prod-change-me".into()
         });
 
+        let downloads_dir = std::env::var("TP_DOWNLOADS_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("./downloads"));
+
         Ok(Self {
             db,
             redis,
@@ -40,6 +48,7 @@ impl AppState {
                 access_ttl_secs: 15 * 60,         // 15 min
                 refresh_ttl_secs: 30 * 24 * 3600, // 30 days
             }),
+            downloads_dir: Arc::new(downloads_dir),
         })
     }
 }

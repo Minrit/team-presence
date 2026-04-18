@@ -7,6 +7,8 @@ import Compute from './pages/Compute'
 import Connect from './pages/Connect'
 import CurrentStory from './pages/CurrentStory'
 import Kanban from './pages/Kanban'
+import Members from './pages/Members'
+import Overview from './pages/Overview'
 import Stream from './pages/Stream'
 import Grid from './pages/Grid'
 import Room from './pages/Room'
@@ -14,7 +16,7 @@ import Stories from './pages/Stories'
 import Sprints from './pages/Sprints'
 import Login from './pages/Login'
 import Register from './pages/Register'
-import { Placeholder } from './pages/Placeholder'
+/* Placeholder import removed now that all 8 Hive screens ship real pages. */
 
 export default function App() {
   return (
@@ -29,25 +31,9 @@ export default function App() {
             <Route path="/story/:id" element={<CurrentStory />} />
             <Route path="/backlog" element={<Backlog />} />
             <Route path="/stream" element={<Stream />} />
-            <Route
-              path="/members"
-              element={
-                <Placeholder
-                  title="Members"
-                  hint="List + detail of each teammate. Unit 19 ships this."
-                />
-              }
-            />
+            <Route path="/members" element={<Members />} />
             <Route path="/compute" element={<Compute />} />
-            <Route
-              path="/overview"
-              element={
-                <Placeholder
-                  title="Overview"
-                  hint="Sprint KPIs + burnup + epics progress. Unit 20 ships this."
-                />
-              }
-            />
+            <Route path="/overview" element={<Overview />} />
             <Route path="/connect" element={<Connect />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/stories" element={<Stories />} />

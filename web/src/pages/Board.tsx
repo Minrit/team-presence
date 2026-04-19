@@ -1,26 +1,32 @@
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
 import { useAuth } from '../auth'
+import { useCreateStoryDialog } from '../components/CreateStoryDialog'
 import { Avatar, userToAvatar } from '../design/Avatar'
 import { Chip } from '../design/Chip'
 import { StatusIcon } from '../design/StatusIcon'
 import { useSseGrid } from '../hooks/useSseGrid'
-import { useEpics, useStories } from '../stories'
+import { patchStory, useEpics, useStories } from '../stories'
 import type { Epic, GridTile, Story, StoryStatus, User } from '../types'
+import { STATUSES } from '../types'
 import { BoardColumn } from './board/BoardColumn'
 
 const PRIMARY: StoryStatus[] = ['todo', 'in_progress', 'review', 'done']
 
-/** Read-only board. Drag-and-drop was removed — status moves now flow
- *  through MCP (`tp.story.move_status` / the /tp-move-status skill) so
- *  the audit log carries actor_type='agent'. Cards still click into
- *  /story/:id.
+/** Drag-and-drop board. Cards are sortable within a column; dropping onto
+ *  another column fires patchStory({ status }). Status changes are
+ *  optimistically applied and rolled back on failure.
  *
- *  Owner filter: `?owner=all|me|<user_id>` filters the visible stories.
- *  Useful for "只做我的" — set a session to mine-only then hand the
- *  board to /tp-dev-story. */
+ *  Owner filter: `?owner=all|me|<user_id>` filters the visible stories. */
 export default function Board() {
   const [params, setParams] = useSearchParams()
   const { user } = useAuth()
@@ -32,7 +38,37 @@ export default function Board() {
     { refreshInterval: 60_000 },
   )
   const { tiles } = useSseGrid()
+  const { open: openCreate } = useCreateStoryDialog()
   const [blockedOpen, setBlockedOpen] = useState(false)
+
+  // Pointer sensor with small activation distance so a plain click (≤ 4px)
+  // still navigates to /story/:id via StoryCard onClick instead of hijacking
+  // it as a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  )
+
+  async function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over) return
+    const overId = String(over.id)
+    // Droppable id can be either a column (status string) or another card id.
+    let targetStatus: StoryStatus | undefined
+    if ((STATUSES as string[]).includes(overId)) {
+      targetStatus = overId as StoryStatus
+    } else {
+      const overCard = stories?.find((s) => s.id === String(over.id))
+      if (overCard) targetStatus = overCard.status
+    }
+    if (!targetStatus) return
+    const moved = stories?.find((s) => s.id === String(active.id))
+    if (!moved || moved.status === targetStatus) return
+    try {
+      await patchStory(moved.id, { status: targetStatus })
+    } catch (err) {
+      alert(`Move failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   const ownerFilter = params.get('owner') ?? 'all'
   const setOwnerFilter = (v: string) => {
@@ -114,6 +150,7 @@ export default function Board() {
     .sort((a, b) => b[1] - a[1])
 
   return (
+    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
     <div
       style={{
         height: '100%',
@@ -161,6 +198,22 @@ export default function Board() {
             </Chip>
           )
         })}
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={() => openCreate()}
+          style={{
+            padding: '4px 12px',
+            background: 'var(--hv-accent)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--radius-sm)',
+            font: '500 12.5px/1 var(--font)',
+            cursor: 'pointer',
+          }}
+        >
+          + New story
+        </button>
       </div>
 
       {/* Columns */}
@@ -230,5 +283,6 @@ export default function Board() {
         ))}
       </div>
     </div>
+    </DndContext>
   )
 }

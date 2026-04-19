@@ -1,3 +1,5 @@
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
 import { Avatar, userToAvatar } from '../../design/Avatar'
 import { Icon } from '../../design/Icon'
@@ -6,9 +8,11 @@ import { Priority } from '../../design/Priority'
 import { ProgressBar } from '../../design/ProgressBar'
 import { StoryId } from '../../design/StoryId'
 import type { Epic, GridTile, Story, User } from '../../types'
+import { CardActionMenu } from './CardActionMenu'
 
-/** Read-only card. Clicking navigates to /story/:id. Drag-and-drop was
- *  removed in the AI-native refactor — status moves happen via MCP tools. */
+/** Draggable story card. Click navigates to /story/:id; dragging fires
+ *  Board's onDragEnd which patches story.status. Card menu (⋯) covers
+ *  non-drag metadata edits (priority / epic / delete). */
 export function StoryCard({
   story,
   epics,
@@ -21,6 +25,8 @@ export function StoryCard({
   owner?: User
 }) {
   const navigate = useNavigate()
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
+    useSortable({ id: story.id, data: { storyId: story.id, status: story.status } })
 
   const epic = story.epic_id ? epics[story.epic_id] : undefined
   const tiles = (tilesByStory[story.id] ?? []).filter((t) => !t.ended_at)
@@ -29,6 +35,9 @@ export function StoryCard({
 
   return (
     <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       onClick={() => navigate(`/story/${story.id}`)}
       style={{
         background: 'var(--surface)',
@@ -39,19 +48,21 @@ export function StoryCard({
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
-        cursor: 'pointer',
-        transition: 'transform 120ms ease, box-shadow 120ms ease',
+        cursor: isDragging ? 'grabbing' : 'pointer',
+        transition: transition ?? 'transform 120ms ease, box-shadow 120ms ease',
+        transform: CSS.Transform.toString(transform),
+        opacity: isDragging ? 0.6 : 1,
+        userSelect: 'none',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-1px)'
+        if (isDragging) return
         e.currentTarget.style.boxShadow = 'var(--shadow-md)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)'
         e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
       }}
     >
-      {/* Top row: id + epic + priority */}
+      {/* Top row: id + epic + priority + menu */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <StoryId id={story.id} />
         {epic && (
@@ -68,6 +79,7 @@ export function StoryCard({
         )}
         <div style={{ flex: 1 }} />
         {story.priority && <Priority level={story.priority} />}
+        <CardActionMenu story={story} />
       </div>
 
       <div

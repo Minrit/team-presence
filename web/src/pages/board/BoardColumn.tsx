@@ -1,9 +1,12 @@
+import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { StatusIcon } from '../../design/StatusIcon'
 import { STATUS_META } from '../../design/meta'
 import { StoryCard } from './StoryCard'
 import type { Epic, GridTile, Story, StoryStatus, User } from '../../types'
 
-/** Read-only column. Previously droppable for dnd-kit; now purely a list. */
+/** Droppable column. Dnd `over.id` equals the status string — Board's
+ *  onDragEnd reads that and issues a patchStory({status}). */
 export function BoardColumn({
   status,
   stories,
@@ -18,6 +21,7 @@ export function BoardColumn({
   usersById: Record<string, User>
 }) {
   const meta = STATUS_META[status]
+  const { setNodeRef, isOver } = useDroppable({ id: status })
 
   return (
     <div
@@ -61,38 +65,49 @@ export function BoardColumn({
         </span>
       </div>
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 60,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          padding: 6,
-        }}
+      <SortableContext
+        items={stories.map((s) => s.id)}
+        strategy={verticalListSortingStrategy}
       >
-        {stories.map((s) => (
-          <StoryCard
-            key={s.id}
-            story={s}
-            epics={epics}
-            tilesByStory={tilesByStory}
-            owner={s.owner_id ? usersById[s.owner_id] : undefined}
-          />
-        ))}
-        {stories.length === 0 && (
-          <div
-            style={{
-              padding: 18,
-              textAlign: 'center',
-              font: '400 12px/1.4 var(--font)',
-              color: 'var(--fg-4)',
-            }}
-          >
-            —
-          </div>
-        )}
-      </div>
+        <div
+          ref={setNodeRef}
+          style={{
+            flex: 1,
+            minHeight: 60,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: 6,
+            borderRadius: 'var(--radius-sm)',
+            background: isOver ? 'var(--bg-2)' : 'transparent',
+            outline: isOver ? '2px dashed var(--hv-accent)' : 'none',
+            outlineOffset: -2,
+            transition: 'background 120ms ease',
+          }}
+        >
+          {stories.map((s) => (
+            <StoryCard
+              key={s.id}
+              story={s}
+              epics={epics}
+              tilesByStory={tilesByStory}
+              owner={s.owner_id ? usersById[s.owner_id] : undefined}
+            />
+          ))}
+          {stories.length === 0 && (
+            <div
+              style={{
+                padding: 18,
+                textAlign: 'center',
+                font: '400 12px/1.4 var(--font)',
+                color: 'var(--fg-4)',
+              }}
+            >
+              —
+            </div>
+          )}
+        </div>
+      </SortableContext>
     </div>
   )
 }

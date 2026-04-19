@@ -29,6 +29,9 @@ importers:
       '@tiptap/extension-link':
         specifier: ^3.22.3
         version: 3.22.3(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3)
+      '@tiptap/extension-placeholder':
+        specifier: ^3.22.3
+        version: 3.22.3(@tiptap/extensions@3.22.4(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3))
       '@tiptap/extension-table':
         specifier: ^3.22.3
         version: 3.22.3(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3)
@@ -688,6 +691,11 @@ packages:
     peerDependencies:
       '@tiptap/core': ^3.22.3
 
+  '@tiptap/extension-placeholder@3.22.3':
+    resolution: {integrity: sha512-7vbtlDVO00odqCnsMSmA4b6wjL5PFdfExFsdsDO0K0VemqHZ/doIRx/tosNUD1VYSOyKQd8U7efUjkFyVoIPlg==}
+    peerDependencies:
+      '@tiptap/extensions': ^3.22.3
+
   '@tiptap/extension-strike@3.22.3':
     resolution: {integrity: sha512-jY2InoUlKkuk5KHoIDGdML1OCA2n6PRHAtxwHNkAmiYh0Khf0zaVPGFpx4dgQrN7W5Q1WE6oBZnjrvy6qb7w0g==}
     peerDependencies:
@@ -739,6 +747,12 @@ packages:
     peerDependencies:
       '@tiptap/core': ^3.22.3
       '@tiptap/pm': ^3.22.3
+
+  '@tiptap/extensions@3.22.4':
+    resolution: {integrity: sha512-fOe8VptJvLPs32bNdUYo8SRyljwqKNQVXWW056VoXIc5en/59OdJlJQVeHI0jRRciH3MtrqODi/gfJR0VHNZ8A==}
+    peerDependencies:
+      '@tiptap/core': 3.22.4
+      '@tiptap/pm': 3.22.4
 
   '@tiptap/pm@3.22.3':
     resolution: {integrity: sha512-NjfWjZuvrqmpICT+GZWNIjtOdhPyqFKDMtQy7tsQ5rErM9L2ZQdy/+T/BKSO1JdTeBhdg9OP+0yfsqoYp2aT6A==}
@@ -2278,6 +2292,10 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.22.3(@tiptap/pm@3.22.3)
 
+  '@tiptap/extension-placeholder@3.22.3(@tiptap/extensions@3.22.4(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3))':
+    dependencies:
+      '@tiptap/extensions': 3.22.4(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3)
+
   '@tiptap/extension-strike@3.22.3(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))':
     dependencies:
       '@tiptap/core': 3.22.3(@tiptap/pm@3.22.3)
@@ -2316,6 +2334,11 @@ snapshots:
       '@tiptap/core': 3.22.3(@tiptap/pm@3.22.3)
 
   '@tiptap/extensions@3.22.3(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3)':
+    dependencies:
+      '@tiptap/core': 3.22.3(@tiptap/pm@3.22.3)
+      '@tiptap/pm': 3.22.3
+
+  '@tiptap/extensions@3.22.4(@tiptap/core@3.22.3(@tiptap/pm@3.22.3))(@tiptap/pm@3.22.3)':
     dependencies:
       '@tiptap/core': 3.22.3(@tiptap/pm@3.22.3)
       '@tiptap/pm': 3.22.3

@@ -1,20 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
-import { StarterKit } from '@tiptap/starter-kit'
-import { Link } from '@tiptap/extension-link'
-import { TaskList } from '@tiptap/extension-task-list'
-import { TaskItem } from '@tiptap/extension-task-item'
-import { Table } from '@tiptap/extension-table'
-import { TableRow } from '@tiptap/extension-table-row'
-import { TableHeader } from '@tiptap/extension-table-header'
-import { TableCell } from '@tiptap/extension-table-cell'
-import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
-import { common, createLowlight } from 'lowlight'
-import { Markdown } from 'tiptap-markdown'
 
+import { createTiptapExtensions } from './tiptap-extensions'
 import './markdown-view.css'
-
-const lowlight = createLowlight(common)
 
 /** Read-only markdown renderer backed by Tiptap. Scoped under `.tp-md`.
  *  `language-mermaid` code blocks are post-processed into SVG via a
@@ -32,31 +20,7 @@ export function MarkdownView({
   const editor = useEditor({
     editable: false,
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        // CodeBlockLowlight replaces the StarterKit default code block.
-        codeBlock: false,
-      }),
-      CodeBlockLowlight.configure({ lowlight }),
-      Link.configure({
-        openOnClick: true,
-        autolink: true,
-        HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      Markdown.configure({
-        html: false,
-        breaks: true,
-        linkify: true,
-        transformPastedText: false,
-        transformCopiedText: false,
-      }),
-    ],
+    extensions: createTiptapExtensions(),
     content: '',
   })
 

@@ -170,3 +170,43 @@
   color: var(--danger);
   white-space: pre-wrap;
 }
+
+/* Editable variant -------------------------------------------------------- */
+
+.tp-md-editable {
+  border: 1px solid var(--hv-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--surface);
+  transition: border-color 120ms;
+}
+.tp-md-editable:focus-within {
+  border-color: var(--hv-accent);
+}
+.tp-md-editable .ProseMirror {
+  outline: none;
+  min-height: 1.6em;
+}
+.tp-md-editable .ProseMirror:focus {
+  outline: none;
+}
+
+/* Placeholder shown by @tiptap/extension-placeholder. The extension adds
+   `data-placeholder` to the empty first node and sets `is-empty` on it. */
+.tp-md-editable .ProseMirror p.is-empty::before,
+.tp-md-editable .ProseMirror h1.is-empty::before,
+.tp-md-editable .ProseMirror h2.is-empty::before,
+.tp-md-editable .ProseMirror h3.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--fg-4);
+  pointer-events: none;
+  height: 0;
+  float: left;
+}
+
+.tp-md-toolbar button:hover {
+  background: var(--bg-2);
+}
+.tp-md-toolbar button:active {
+  transform: translateY(1px);
+}

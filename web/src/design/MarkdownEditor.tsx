@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 
 import { createTiptapExtensions } from './tiptap-extensions'
@@ -16,23 +16,41 @@ export interface MarkdownEditorProps {
   debounceMs?: number
 }
 
+export interface MarkdownEditorHandle {
+  /** Synchronously fires any pending debounced onChange and returns the
+   *  current markdown. Parent Save handlers call this before reading the
+   *  latest draft. */
+  flush(): string
+}
+
 /** Editable markdown editor backed by Tiptap, sharing the same extension set
  *  as `<MarkdownView>` so round-trips are lossless. onChange fires debounced
  *  with a fresh Markdown string extracted via tiptap-markdown. */
-export function MarkdownEditor({
-  value,
-  onChange,
-  placeholder,
-  autoFocus,
-  className,
-  toolbar = true,
-  debounceMs = 200,
-}: MarkdownEditorProps) {
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
+  function MarkdownEditor(
+    {
+      value,
+      onChange,
+      placeholder,
+      autoFocus,
+      className,
+      toolbar = true,
+      debounceMs = 200,
+    },
+    ref,
+  ) {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Undefined until the editor has loaded content at least once — so the
   // very first effect run always calls setContent, even when the parent
   // passes a non-empty `value` on mount (description prefill).
   const pendingValue = useRef<string | undefined>(undefined)
+  // Latest onChange — Tiptap's onUpdate callback is captured on mount, so
+  // we route through a ref to avoid stale closures when the parent
+  // recreates the onChange arrow every render.
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   const editor = useEditor({
     editable: true,
@@ -41,16 +59,17 @@ export function MarkdownEditor({
     extensions: createTiptapExtensions({ placeholder }),
     content: '',
     onUpdate({ editor }) {
-      // Read markdown straight from storage rather than HTML to avoid double
-      // conversions; debounce so fast typing doesn't flood the network.
       const md = readMarkdown(editor)
       pendingValue.current = md
       if (debounceMs === 0) {
-        onChange(md)
+        onChangeRef.current(md)
         return
       }
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
-      debounceTimer.current = setTimeout(() => onChange(md), debounceMs)
+      debounceTimer.current = setTimeout(
+        () => onChangeRef.current(md),
+        debounceMs,
+      )
     },
   })
 
@@ -64,13 +83,33 @@ export function MarkdownEditor({
     pendingValue.current = value
   }, [editor, value])
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      flush(): string {
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current)
+          debounceTimer.current = null
+        }
+        if (!editor) return value
+        const md = readMarkdown(editor)
+        if (md !== pendingValue.current || md !== value) {
+          pendingValue.current = md
+          onChangeRef.current(md)
+        }
+        return md
+      },
+    }),
+    [editor, value],
+  )
+
   // Flush any pending debounced change on unmount.
   useEffect(() => {
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current)
         const pv = pendingValue.current
-        if (pv !== undefined && pv !== value) onChange(pv)
+        if (pv !== undefined && pv !== value) onChangeRef.current(pv)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +121,8 @@ export function MarkdownEditor({
       <EditorContent editor={editor} />
     </div>
   )
-}
+  },
+)
 
 function readMarkdown(editor: Editor): string {
   const storage = editor.storage as { markdown?: { getMarkdown?: () => string } }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AcceptanceCriterion,
   Priority,
@@ -40,34 +40,34 @@ function toDraft(s: Story): StoryDraft {
 /** Returns a draft mirror of the story plus a `patch(partial)` setter, a
  *  `dirty` flag, and a `diff()` function that produces the patchStory
  *  payload — only fields that actually changed. Reset snaps draft back to
- *  the latest server story. */
+ *  the latest server story. `baseline` is kept as state (not a ref) so
+ *  markClean flips `dirty` through React's normal re-render path. */
 export function useStoryDraft(story: Story | undefined) {
-  const [draft, setDraft] = useState<StoryDraft | null>(
-    story ? toDraft(story) : null,
-  )
-  // Track the server baseline we compare against for dirty / diff. Updated
-  // on reset and on a fresh story fetch when the user has no pending edits.
-  const baseline = useRef<StoryDraft | null>(draft)
+  const initial = story ? toDraft(story) : null
+  const [draft, setDraft] = useState<StoryDraft | null>(initial)
+  const [baseline, setBaseline] = useState<StoryDraft | null>(initial)
 
-  // When the upstream story changes (fresh fetch, SSE), reconcile:
-  // — if draft is pristine (== baseline), follow the server.
-  // — if draft is dirty, leave it alone (don't clobber the user's edits).
+  // Reconcile upstream story changes:
+  //  - first-time load: adopt.
+  //  - draft pristine (== baseline) AND upstream is actually different:
+  //    follow the server.
+  //  - draft dirty: keep the user's edits, leave baseline frozen.
   useEffect(() => {
     if (!story) return
     const next = toDraft(story)
-    if (!draft) {
+    if (!draft || !baseline) {
       setDraft(next)
-      baseline.current = next
+      setBaseline(next)
       return
     }
-    if (baseline.current && shallowEqualDraft(draft, baseline.current)) {
+    if (
+      shallowEqualDraft(draft, baseline) &&
+      !shallowEqualDraft(draft, next)
+    ) {
       setDraft(next)
-      baseline.current = next
-    } else {
-      // User has edits; keep baseline frozen at whatever we last synced to
-      // so Save's diff is still correct.
+      setBaseline(next)
     }
-  }, [story, draft])
+  }, [story, draft, baseline])
 
   const patch = useCallback((p: Partial<StoryDraft>) => {
     setDraft((d) => (d ? { ...d, ...p } : d))
@@ -77,43 +77,49 @@ export function useStoryDraft(story: Story | undefined) {
     if (story) {
       const next = toDraft(story)
       setDraft(next)
-      baseline.current = next
+      setBaseline(next)
     }
   }, [story])
 
   const dirty = useMemo(() => {
-    if (!draft || !baseline.current) return false
-    return !shallowEqualDraft(draft, baseline.current)
-  }, [draft])
+    if (!draft || !baseline) return false
+    return !shallowEqualDraft(draft, baseline)
+  }, [draft, baseline])
 
-  /** Diff draft against baseline. Omits unchanged fields so the PATCH
-   *  body contains only real changes. AC array is compared structurally. */
   const diff = useCallback((): Partial<StoryDraft> => {
-    if (!draft || !baseline.current) return {}
-    const base = baseline.current
+    if (!draft || !baseline) return {}
     const out: Partial<StoryDraft> = {}
-    if (draft.name !== base.name) out.name = draft.name
-    if (draft.description !== base.description)
+    if (draft.name !== baseline.name) out.name = draft.name
+    if (draft.description !== baseline.description)
       out.description = draft.description
-    if (draft.status !== base.status) out.status = draft.status
-    if (draft.priority !== base.priority) out.priority = draft.priority
-    if (draft.points !== base.points) out.points = draft.points
-    if (draft.epic_id !== base.epic_id) out.epic_id = draft.epic_id
-    if (draft.sprint_id !== base.sprint_id) out.sprint_id = draft.sprint_id
-    if (draft.owner_id !== base.owner_id) out.owner_id = draft.owner_id
-    if (draft.branch !== base.branch) out.branch = draft.branch
-    if (draft.pr_ref !== base.pr_ref) out.pr_ref = draft.pr_ref
-    if (!acEqual(draft.acceptance_criteria, base.acceptance_criteria)) {
+    if (draft.status !== baseline.status) out.status = draft.status
+    if (draft.priority !== baseline.priority) out.priority = draft.priority
+    if (draft.points !== baseline.points) out.points = draft.points
+    if (draft.epic_id !== baseline.epic_id) out.epic_id = draft.epic_id
+    if (draft.sprint_id !== baseline.sprint_id)
+      out.sprint_id = draft.sprint_id
+    if (draft.owner_id !== baseline.owner_id) out.owner_id = draft.owner_id
+    if (draft.branch !== baseline.branch) out.branch = draft.branch
+    if (draft.pr_ref !== baseline.pr_ref) out.pr_ref = draft.pr_ref
+    if (!acEqual(draft.acceptance_criteria, baseline.acceptance_criteria)) {
       out.acceptance_criteria = draft.acceptance_criteria
     }
     return out
-  }, [draft])
+  }, [draft, baseline])
 
   /** Mark current draft as the new baseline — call after a successful save
-   *  to preserve the user's diff-free state until the next change. */
-  const markClean = useCallback(() => {
-    if (draft) baseline.current = draft
-  }, [draft])
+   *  so the Save button disables and the dirty chip disappears. Optionally
+   *  applies a last-moment override (used by Save to fold in the flushed
+   *  markdown from the debounced editor whose setDraft hasn't committed). */
+  const markClean = useCallback(
+    (override?: Partial<StoryDraft>) => {
+      if (!draft) return
+      const next = override ? { ...draft, ...override } : draft
+      if (override) setDraft(next)
+      setBaseline(next)
+    },
+    [draft],
+  )
 
   return { draft, patch, reset, dirty, diff, markClean }
 }

@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
 import { AgentChip } from '../design/AgentChip'
 import { Card } from '../design/Card'
-import { MarkdownEditor } from '../design/MarkdownEditor'
+import { MarkdownEditor, type MarkdownEditorHandle } from '../design/MarkdownEditor'
 import { StoryId } from '../design/StoryId'
 import { useStoryDraft } from '../hooks/useStoryDraft'
 import { useSseGrid } from '../hooks/useSseGrid'
@@ -65,6 +65,7 @@ export default function CurrentStory() {
   const [tab, setTab] = useState<RightTab>('terminal')
   const [activeSession, setActiveSession] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const descEditorRef = useRef<MarkdownEditorHandle>(null)
 
   const epic = useMemo(
     () => (story?.epic_id && epics ? epics.find((e) => e.id === story.epic_id) : undefined),
@@ -131,13 +132,26 @@ export default function CurrentStory() {
   }
 
   async function handleSave() {
-    if (!story || !dirty || saving) return
+    if (!story || saving) return
+    // Flush any pending debounced description so the save catches it even
+    // if the user clicked Save mid-debounce. flush() returns latest md
+    // synchronously; the onChange it fires schedules a patch() that won't
+    // commit this tick — so fold latestDesc into the payload directly.
+    const latestDesc = descEditorRef.current?.flush()
     const payload = diff()
+    if (latestDesc !== undefined && latestDesc !== story.description) {
+      payload.description = latestDesc
+    }
     if (Object.keys(payload).length === 0) return
     setSaving(true)
     try {
       await patchStory(story.id, payload)
-      markClean()
+      // Snap baseline to (draft + latestDesc). This guarantees Save
+      // disables even when the debounced setDraft for description hasn't
+      // landed yet by the time we mark clean.
+      markClean(
+        latestDesc !== undefined ? { description: latestDesc } : undefined,
+      )
     } catch (err) {
       alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
@@ -276,10 +290,10 @@ export default function CurrentStory() {
 
           <MarkdownEditor
             key={`desc-${story.id}`}
+            ref={descEditorRef}
             value={draft.description}
             onChange={(md) => patch({ description: md })}
             placeholder="Describe this story…  (Markdown, mermaid, code blocks supported)"
-            debounceMs={0}
           />
         </Card>
 

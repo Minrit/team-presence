@@ -5,10 +5,12 @@ import { BurnupChart } from '../design/BurnupChart'
 import { Card } from '../design/Card'
 import { ProgressBar } from '../design/ProgressBar'
 import { useEpics, useStories } from '../stories'
-import type { Epic, SessionMetaLite, Sprint, Story } from '../types'
+import { USERS_KEY } from '../users'
+import type { Epic, SessionMetaLite, Sprint, Story, User } from '../types'
 
 const sessionsFetcher = (k: string) => api.get<SessionMetaLite[]>(k)
 const sprintsFetcher = (k: string) => api.get<Sprint[]>(k)
+const usersFetcher = (k: string) => api.get<User[]>(k)
 
 export default function Overview() {
   const { data: stories } = useStories()
@@ -19,6 +21,12 @@ export default function Overview() {
     sessionsFetcher,
     { refreshInterval: 15_000 },
   )
+  const { data: users } = useSWR<User[]>(USERS_KEY, usersFetcher)
+  const usersById = useMemo<Record<string, User>>(() => {
+    const m: Record<string, User> = {}
+    for (const u of users ?? []) m[u.id] = u
+    return m
+  }, [users])
 
   const current = useMemo(
     () =>
@@ -107,7 +115,11 @@ export default function Overview() {
       {/* Team load */}
       <Card style={{ padding: 16, gridColumn: '1 / -1' }}>
         <div style={{ font: '600 13px/1 var(--font)', marginBottom: 10 }}>Team load</div>
-        <TeamLoad stories={inSprint} sessions={sessions ?? []} />
+        <TeamLoad
+          stories={inSprint}
+          sessions={sessions ?? []}
+          usersById={usersById}
+        />
       </Card>
     </div>
   )
@@ -146,9 +158,11 @@ function EpicRow({ epic, stories }: { epic: Epic; stories: Story[] }) {
 function TeamLoad({
   stories,
   sessions,
+  usersById,
 }: {
   stories: Story[]
   sessions: SessionMetaLite[]
+  usersById: Record<string, User>
 }) {
   const byUser = new Map<string, { stories: Story[]; sessions: number }>()
   for (const s of stories) {
@@ -193,7 +207,12 @@ function TeamLoad({
               gap: 6,
             }}
           >
-            <div style={{ font: '500 12.5px/1 var(--font)' }}>{userId.slice(0, 8)}…</div>
+            <div
+              style={{ font: '500 12.5px/1 var(--font)' }}
+              title={userId}
+            >
+              {usersById[userId]?.display_name ?? `${userId.slice(0, 8)}…`}
+            </div>
             <ProgressBar value={Math.min(pts, 10)} total={10} height={6} />
             <div style={{ font: '400 11px/1 var(--mono)', color: 'var(--fg-3)' }}>
               {b.stories.length} stories · {pts} pt · {b.sessions} live

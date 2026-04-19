@@ -1,8 +1,20 @@
 # team-presence — AI-native usage
 
-team-presence is a read-only observation dashboard plus an MCP-driven
-toolchain. The browser shows the board; Claude Code (or any MCP client)
-does the work.
+team-presence is a live observation dashboard plus an MCP-driven toolchain.
+Agents and humans both write through the same HTTP API — agent writes come
+through Claude Code (or any MCP client) talking to `tp-mcp`; human writes
+come from the browser dashboard. Activity log distinguishes them via
+`actor_type` (`agent` vs `user`).
+
+Use whichever is more natural:
+
+- **Driving a work session with an AI agent?** Use `/tp-*` skills — they
+  give you the full guided workflow (`/tp-dev-story`, `/tp-groom-ac`, etc.)
+  and their activity shows as `actor_type=agent` on the board.
+- **Quick tweak (rename, edit AC, change priority, post a comment)?**
+  Use the browser. Every field is editable in-place; the only read-only
+  surfaces are the live Claude session streams in Stream / Room / the
+  CurrentStory right pane — those are collector telemetry, not data.
 
 ## Architecture at a glance
 
@@ -15,7 +27,9 @@ does the work.
                                                      ▼
 ┌──────────────────┐       SSE + REST            ┌──────────┐
 │   Browser UI     │ ────────────────────────────│  server  │  ← Axum + Postgres + Redis
-│ (read-only)      │                             └──────────┘
+│ (full CRUD, except
+│  live session    │                             └──────────┘
+│  streams)        │
 └──────────────────┘
 ```
 

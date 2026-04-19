@@ -11,6 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'story',    label: 'Current story', path: '/',         icon: 'sparkle' },
   { id: 'board',    label: 'Board',         path: '/board',    icon: 'columns' },
   { id: 'backlog',  label: 'Backlog',       path: '/backlog',  icon: 'inbox', badgeKey: 'unclaimed' },
+  { id: 'sprints',  label: 'Sprints',       path: '/sprints',  icon: 'clock' },
   { id: 'stream',   label: 'Team stream',   path: '/stream',   icon: 'terminal', live: true },
   { id: 'members',  label: 'Members',       path: '/members',  icon: 'users' },
   { id: 'compute',  label: 'Compute',       path: '/compute',  icon: 'cpu' },

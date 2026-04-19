@@ -15,3 +15,8 @@ pub struct Comment {
 pub struct CreateCommentRequest {
     pub body: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct PatchCommentRequest {
+    pub body: String,
+}

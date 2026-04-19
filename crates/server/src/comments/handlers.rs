@@ -1,10 +1,11 @@
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     Extension, Json,
 };
 use uuid::Uuid;
 
-use super::model::{Comment, CreateCommentRequest};
+use super::model::{Comment, CreateCommentRequest, PatchCommentRequest};
 use crate::{
     auth::model::Identity,
     error::AppError,
@@ -78,6 +79,94 @@ pub async fn create(
     .await;
 
     Ok(Json(row))
+}
+
+pub async fn patch(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((story_id, comment_id)): Path<(Uuid, Uuid)>,
+    Json(req): Json<PatchCommentRequest>,
+) -> Result<Json<Comment>, AppError> {
+    let body = req.body.trim().to_string();
+    if body.is_empty() {
+        return Err(AppError::BadRequest("body required".into()));
+    }
+    if body.len() > BODY_MAX {
+        return Err(AppError::BadRequest("body too long".into()));
+    }
+
+    let existing: Option<Comment> = sqlx::query_as::<_, Comment>(
+        r#"SELECT * FROM comments WHERE id = $1 AND story_id = $2"#,
+    )
+    .bind(comment_id)
+    .bind(story_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let existing = existing.ok_or(AppError::NotFound)?;
+
+    if existing.author_id != identity.user_id {
+        return Err(AppError::Forbidden);
+    }
+
+    let row: Comment = sqlx::query_as::<_, Comment>(
+        r#"UPDATE comments SET body = $1 WHERE id = $2 RETURNING *"#,
+    )
+    .bind(&body)
+    .bind(comment_id)
+    .fetch_one(&state.db)
+    .await?;
+
+    activity::emit(
+        &state.db,
+        Some(&state.redis),
+        story_id,
+        identity.activity_actor(),
+        &identity.user_id.to_string(),
+        activity::COMMENT,
+        format!("edited: {}", preview(&body, 140)).as_str(),
+        Some(&row.id.to_string()),
+    )
+    .await;
+
+    Ok(Json(row))
+}
+
+pub async fn delete(
+    State(state): State<AppState>,
+    Extension(identity): Extension<Identity>,
+    Path((story_id, comment_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, AppError> {
+    let existing: Option<Comment> = sqlx::query_as::<_, Comment>(
+        r#"SELECT * FROM comments WHERE id = $1 AND story_id = $2"#,
+    )
+    .bind(comment_id)
+    .bind(story_id)
+    .fetch_optional(&state.db)
+    .await?;
+    let existing = existing.ok_or(AppError::NotFound)?;
+
+    if existing.author_id != identity.user_id {
+        return Err(AppError::Forbidden);
+    }
+
+    sqlx::query("DELETE FROM comments WHERE id = $1")
+        .bind(comment_id)
+        .execute(&state.db)
+        .await?;
+
+    activity::emit(
+        &state.db,
+        Some(&state.redis),
+        story_id,
+        identity.activity_actor(),
+        &identity.user_id.to_string(),
+        activity::COMMENT,
+        "deleted",
+        Some(&comment_id.to_string()),
+    )
+    .await;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 fn preview(body: &str, max: usize) -> String {

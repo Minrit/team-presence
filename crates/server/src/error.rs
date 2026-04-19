@@ -9,6 +9,8 @@ use serde::Serialize;
 pub enum AppError {
     #[error("unauthorized")]
     Unauthorized,
+    #[error("forbidden")]
+    Forbidden,
     #[error("not found")]
     NotFound,
     #[error("email already registered")]
@@ -33,6 +35,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, code) = match &self {
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized"),
+            AppError::Forbidden => (StatusCode::FORBIDDEN, "forbidden"),
             AppError::NotFound => (StatusCode::NOT_FOUND, "not_found"),
             AppError::Conflict => (StatusCode::CONFLICT, "conflict"),
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "bad_request"),

@@ -1,20 +1,25 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth'
+import { useCreateStoryDialog } from '../components/CreateStoryDialog'
 import { Chip } from '../design/Chip'
 import { Priority } from '../design/Priority'
 import { ProgressBar } from '../design/ProgressBar'
 import { StoryId } from '../design/StoryId'
-import { useEpics, useStories } from '../stories'
-import type { Priority as PriorityLevel } from '../types'
+import { claimStory, patchStory, useEpics, useStories } from '../stories'
+import type { Priority as PriorityLevel, Story } from '../types'
 
 const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P1', 'P2', 'P3']
+const PRIORITIES: PriorityLevel[] = ['P1', 'P2', 'P3', 'P4']
 
-/** Read-only backlog. Claim happens via MCP (`tp.story.claim` /
- *  `/tp-dev-story`). Filter chips are pure client-side UI state. */
+/** Backlog = todo stories without an owner. Cards support Claim (assigns
+ *  current user + moves to in_progress) and inline priority edit. */
 export default function Backlog() {
   const { data: stories } = useStories()
   const { data: epics } = useEpics()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const { open: openCreate } = useCreateStoryDialog()
   const [filter, setFilter] = useState<PriorityLevel | 'all'>('all')
 
   const epicsById = useMemo(() => {
@@ -41,6 +46,24 @@ export default function Backlog() {
     return c
   }, [eligible])
 
+  async function handleClaim(s: Story) {
+    if (!user) return
+    try {
+      await claimStory(s.id, user.id)
+      navigate(`/story/${s.id}`)
+    } catch (err) {
+      alert(`Claim failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  async function handleSetPriority(s: Story, p: PriorityLevel | null) {
+    try {
+      await patchStory(s.id, { priority: p })
+    } catch (err) {
+      alert(`Update failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -58,15 +81,21 @@ export default function Backlog() {
           )
         })}
         <div style={{ flex: 1 }} />
-        <span
+        <button
+          type="button"
+          onClick={() => openCreate()}
           style={{
-            font: '400 11.5px/1 var(--font)',
-            color: 'var(--fg-3)',
+            padding: '5px 12px',
+            background: 'var(--hv-accent)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--radius-sm)',
+            font: '500 12.5px/1 var(--font)',
+            cursor: 'pointer',
           }}
-          title="Claim happens via the team-presence MCP server (/tp-dev-story or tp.story.claim)"
         >
-          Claim via MCP · <span className="mono">/tp-dev-story</span>
-        </span>
+          + New story
+        </button>
       </div>
 
       <div
@@ -97,7 +126,6 @@ export default function Backlog() {
           return (
             <div
               key={s.id}
-              onClick={() => navigate(`/story/${s.id}`)}
               style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--hv-border)',
@@ -106,21 +134,17 @@ export default function Backlog() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,
-                cursor: 'pointer',
                 boxShadow: 'var(--shadow-sm)',
-                transition: 'transform 120ms ease, box-shadow 120ms ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = 'var(--shadow-md)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = 'var(--shadow-sm)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <StoryId id={s.id} />
+                <button
+                  type="button"
+                  onClick={() => navigate(`/story/${s.id}`)}
+                  style={linkBtn}
+                >
+                  <StoryId id={s.id} />
+                </button>
                 {epicColor && (
                   <span
                     style={{
@@ -132,11 +156,23 @@ export default function Backlog() {
                   />
                 )}
                 <div style={{ flex: 1 }} />
-                {s.priority && <Priority level={s.priority} />}
+                <PrioritySelect
+                  value={s.priority}
+                  onChange={(p) => handleSetPriority(s, p)}
+                />
               </div>
-              <div style={{ font: '500 14px/1.35 var(--font)', color: 'var(--hv-fg)' }}>
+              <button
+                type="button"
+                onClick={() => navigate(`/story/${s.id}`)}
+                style={{
+                  ...linkBtn,
+                  font: '500 14px/1.35 var(--font)',
+                  color: 'var(--hv-fg)',
+                  textAlign: 'left',
+                }}
+              >
                 {s.name}
-              </div>
+              </button>
               {acTotal > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <ProgressBar value={acDone} total={acTotal} />
@@ -145,23 +181,113 @@ export default function Backlog() {
                   </div>
                 </div>
               )}
-              {s.points != null && (
-                <span
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginTop: 2,
+                }}
+              >
+                {s.points != null && (
+                  <span
+                    style={{
+                      font: '500 11px/1 var(--mono)',
+                      color: 'var(--fg-3)',
+                    }}
+                  >
+                    {s.points} pt
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => handleClaim(s)}
+                  disabled={!user}
                   style={{
-                    font: '500 11px/1 var(--mono)',
-                    color: 'var(--fg-3)',
-                    alignSelf: 'flex-start',
+                    padding: '5px 12px',
+                    background: 'var(--hv-accent)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    font: '500 12px/1 var(--font)',
+                    cursor: user ? 'pointer' : 'not-allowed',
                   }}
                 >
-                  {s.points} pt
-                </span>
-              )}
+                  Claim
+                </button>
+              </div>
             </div>
           )
         })}
       </div>
     </div>
   )
+}
+
+function PrioritySelect({
+  value,
+  onChange,
+}: {
+  value: PriorityLevel | null
+  onChange: (p: PriorityLevel | null) => void
+}) {
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }}>
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          padding: '2px 6px',
+          background: 'var(--bg-2)',
+          border: '1px solid var(--hv-border)',
+          borderRadius: 'var(--radius-sm)',
+          cursor: 'pointer',
+        }}
+      >
+        {value ? (
+          <Priority level={value} />
+        ) : (
+          <span style={{ font: '400 11.5px/1 var(--font)', color: 'var(--fg-4)' }}>
+            — no prio —
+          </span>
+        )}
+        <span style={{ color: 'var(--fg-4)', font: '400 10px/1 var(--mono)' }}>▾</span>
+      </span>
+      <select
+        value={value ?? ''}
+        onChange={(e) => {
+          const v = e.target.value
+          onChange(v === '' ? null : (v as PriorityLevel))
+        }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0,
+          cursor: 'pointer',
+        }}
+      >
+        <option value="">— none —</option>
+        {PRIORITIES.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+    </span>
+  )
+}
+
+const linkBtn: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  font: 'inherit',
+  color: 'inherit',
 }
 
 function priorityColor(p: PriorityLevel): string {

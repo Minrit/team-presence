@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
+import { useCreateStoryDialog } from '../components/CreateStoryDialog'
 import { AvatarStack, userToAvatar } from '../design/Avatar'
 import { LiveDot } from '../design/LiveDot'
 import type { SessionMetaLite, User } from '../types'
@@ -8,11 +9,12 @@ import { activeNavLabel } from './nav'
 
 const sessionsFetcher = (k: string) => api.get<SessionMetaLite[]>(k)
 
-/** Read-only status strip. AI-native posture: no write buttons (New / Bell
- *  were removed because they either did nothing or only existed as UI hooks
- *  for features now driven by the MCP toolchain). */
+/** Status strip with breadcrumb, live-session count, online avatars, and a
+ *  global "New" button (also bound to ⌘N) that opens the shared
+ *  CreateStoryDialog from anywhere in the app. */
 export function TopMeta() {
   const { pathname } = useLocation()
+  const { open: openCreateStory } = useCreateStoryDialog()
   const { data: sessions } = useSWR<SessionMetaLite[]>(
     '/api/v1/sessions',
     sessionsFetcher,
@@ -54,6 +56,27 @@ export function TopMeta() {
       </span>
 
       <div style={{ flex: 1 }} />
+
+      <button
+        type="button"
+        onClick={() => openCreateStory()}
+        title="New story (⌘N)"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 11px',
+          background: 'var(--hv-accent)',
+          color: 'white',
+          border: 'none',
+          borderRadius: 'var(--radius-sm)',
+          font: '500 12px/1 var(--font)',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ font: '500 13px/1 var(--mono)' }}>+</span>
+        New
+      </button>
 
       <div
         title="Active collector sessions"

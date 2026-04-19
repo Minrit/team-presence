@@ -19,6 +19,8 @@ use axum::{
 };
 use session::handlers as sessions;
 use state::AppState;
+use std::path::PathBuf;
+use tower_http::services::{ServeDir, ServeFile};
 
 pub fn build_router(state: AppState) -> Router {
     let protected = Router::new()
@@ -109,11 +111,31 @@ pub fn build_router(state: AppState) -> Router {
     // merged OUTSIDE `protected` so `curl | sh` works. See plan 010.
     let downloads = downloads::router::<AppState>();
 
-    public
+    let api = public
         .merge(protected)
         .merge(collector_ws)
         .merge(downloads)
-        .with_state(state)
+        .with_state(state);
+
+    if let Ok(dir) = std::env::var("WEB_DIST_DIR") {
+        let dir = PathBuf::from(dir);
+        if !dir.join("index.html").is_file() {
+            tracing::warn!(
+                web_dist = %dir.display(),
+                "WEB_DIST_DIR set but index.html missing; SPA fallback disabled",
+            );
+            return api;
+        }
+        // Serve every static file on disk (assets/, favicon.ico, zira-*.png,
+        // anything else Vite puts under `public/`). For paths that don't map
+        // to a file, fall back to index.html so React Router can take over
+        // on deep-link refreshes.
+        let spa_index = ServeFile::new(dir.join("index.html"));
+        let static_service = ServeDir::new(&dir).fallback(spa_index);
+        api.fallback_service(static_service)
+    } else {
+        api
+    }
 }
 
 async fn health() -> &'static str {

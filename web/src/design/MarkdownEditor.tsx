@@ -29,7 +29,10 @@ export function MarkdownEditor({
   debounceMs = 200,
 }: MarkdownEditorProps) {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingValue = useRef<string>(value)
+  // Undefined until the editor has loaded content at least once — so the
+  // very first effect run always calls setContent, even when the parent
+  // passes a non-empty `value` on mount (description prefill).
+  const pendingValue = useRef<string | undefined>(undefined)
 
   const editor = useEditor({
     editable: true,
@@ -66,7 +69,8 @@ export function MarkdownEditor({
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current)
-        if (pendingValue.current !== value) onChange(pendingValue.current)
+        const pv = pendingValue.current
+        if (pv !== undefined && pv !== value) onChange(pv)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

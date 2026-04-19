@@ -9,9 +9,11 @@ import { StoryId } from '../design/StoryId'
 import { useStoryDraft } from '../hooks/useStoryDraft'
 import { useSseGrid } from '../hooks/useSseGrid'
 import { useStoryActivityStream } from '../hooks/useStoryActivityStream'
+import { useSprints } from '../sprints'
 import {
   deleteStory,
   patchStory,
+  useComments,
   useEpics,
   useStory,
   useStoryActivity,
@@ -19,6 +21,7 @@ import {
 } from '../stories'
 import { Terminal } from '../terminal/Terminal'
 import type { SessionMetaLite, User } from '../types'
+import type { StoryDraft } from '../hooks/useStoryDraft'
 import { AcChecklist } from '../components/AcChecklist'
 import { CommentThread } from '../components/CommentThread'
 import { RelationsEditor } from '../components/RelationsEditor'
@@ -47,6 +50,8 @@ export default function CurrentStory() {
   const { data: activity } = useStoryActivity(id)
   const { data: relations } = useStoryRelations(id)
   const { data: epics } = useEpics()
+  const { data: sprints } = useSprints()
+  const { data: comments } = useComments(id)
   const { data: sessions } = useSWR<SessionMetaLite[]>(
     '/api/v1/sessions',
     (k: string) => api.get<SessionMetaLite[]>(k),
@@ -65,6 +70,7 @@ export default function CurrentStory() {
   const [tab, setTab] = useState<RightTab>('terminal')
   const [activeSession, setActiveSession] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
   const descEditorRef = useRef<MarkdownEditorHandle>(null)
 
   const epic = useMemo(
@@ -159,6 +165,30 @@ export default function CurrentStory() {
     }
   }
 
+  async function handleCopy() {
+    if (!story || !draft) return
+    const latestDesc = descEditorRef.current?.flush() ?? draft.description
+    const md = buildStoryMarkdown({
+      story,
+      draft: { ...draft, description: latestDesc },
+      epics: epics ?? [],
+      sprints: sprints ?? [],
+      usersById,
+      relations,
+      comments: comments ?? [],
+    })
+    try {
+      await navigator.clipboard.writeText(md)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (err) {
+      // Clipboard API needs HTTPS / localhost + user gesture — if it's
+      // blocked, fall back to a prompt dialog so the user can grab it
+      // manually.
+      window.prompt('Copy this markdown:', md)
+    }
+  }
+
   async function handleDelete() {
     if (!story) return
     if (!confirm(`Delete story "${story.name}"? This cannot be undone.`)) return
@@ -222,6 +252,23 @@ export default function CurrentStory() {
                 unsaved
               </span>
             )}
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Copy full story (title + metadata + description + AC + relations + comments) as Markdown, for handing off to an AI agent"
+              style={{
+                padding: '4px 10px',
+                background: copied ? 'var(--success)' : 'transparent',
+                color: copied ? 'white' : 'var(--fg-2)',
+                border: '1px solid var(--hv-border)',
+                borderRadius: 'var(--radius-sm)',
+                font: '500 11.5px/1 var(--font)',
+                cursor: 'pointer',
+                transition: 'background 120ms, color 120ms',
+              }}
+            >
+              {copied ? '✓ Copied' : 'Copy MD'}
+            </button>
             <button
               type="button"
               onClick={reset}
@@ -512,4 +559,103 @@ function shortTime(iso: string): string {
   } catch {
     return iso
   }
+}
+
+/** Render a story + related context as a single Markdown block, for
+ *  pasting into a Claude Code / Codex session. Uses the draft values so
+ *  in-flight edits (before Save) are captured. */
+function buildStoryMarkdown({
+  story,
+  draft,
+  epics,
+  sprints,
+  usersById,
+  relations,
+  comments,
+}: {
+  story: { id: string; created_at: string; updated_at: string }
+  draft: StoryDraft
+  epics: { id: string; name: string }[]
+  sprints: { id: string; name: string }[]
+  usersById: Record<string, User>
+  relations: { blocks: string[]; blocked_by: string[] } | undefined
+  comments: { id: string; author_id: string; body: string; created_at: string }[]
+}): string {
+  const lines: string[] = []
+  const shortId = story.id.slice(0, 8)
+  lines.push(`# ${draft.name || '(untitled)'}`)
+  lines.push('')
+  lines.push(`**ID:** \`${story.id}\`  (\`${shortId}\`)`)
+
+  const meta: string[] = []
+  meta.push(`**Status:** ${draft.status}`)
+  if (draft.priority) meta.push(`**Priority:** ${draft.priority}`)
+  if (draft.points !== null) meta.push(`**Points:** ${draft.points}`)
+  if (draft.epic_id) {
+    const e = epics.find((x) => x.id === draft.epic_id)
+    meta.push(`**Epic:** ${e?.name ?? draft.epic_id}`)
+  }
+  if (draft.sprint_id) {
+    const s = sprints.find((x) => x.id === draft.sprint_id)
+    meta.push(`**Sprint:** ${s?.name ?? draft.sprint_id}`)
+  }
+  if (draft.owner_id) {
+    const u = usersById[draft.owner_id]
+    meta.push(`**Owner:** ${u?.display_name ?? draft.owner_id}`)
+  }
+  if (draft.branch) meta.push(`**Branch:** \`${draft.branch}\``)
+  if (draft.pr_ref) meta.push(`**PR:** ${draft.pr_ref}`)
+  lines.push(meta.join('  ·  '))
+  lines.push('')
+
+  lines.push('## Description')
+  lines.push('')
+  lines.push(draft.description.trim() || '_(empty)_')
+  lines.push('')
+
+  lines.push('## Acceptance criteria')
+  lines.push('')
+  if (draft.acceptance_criteria.length === 0) {
+    lines.push('_(none)_')
+  } else {
+    for (const a of draft.acceptance_criteria) {
+      lines.push(`- [${a.done ? 'x' : ' '}] ${a.text}`)
+    }
+  }
+  lines.push('')
+
+  if (relations && (relations.blocks.length || relations.blocked_by.length)) {
+    lines.push('## Relations')
+    lines.push('')
+    if (relations.blocked_by.length) {
+      lines.push(
+        `- **Blocked by:** ${relations.blocked_by
+          .map((id) => `\`${id.slice(0, 8)}\``)
+          .join(', ')}`,
+      )
+    }
+    if (relations.blocks.length) {
+      lines.push(
+        `- **Blocks:** ${relations.blocks
+          .map((id) => `\`${id.slice(0, 8)}\``)
+          .join(', ')}`,
+      )
+    }
+    lines.push('')
+  }
+
+  if (comments.length > 0) {
+    lines.push('## Comments')
+    lines.push('')
+    for (const c of comments) {
+      const author = usersById[c.author_id]?.display_name ?? c.author_id.slice(0, 6)
+      const when = shortTime(c.created_at)
+      lines.push(`### ${author} — ${when}`)
+      lines.push('')
+      lines.push(c.body)
+      lines.push('')
+    }
+  }
+
+  return lines.join('\n').trimEnd() + '\n'
 }

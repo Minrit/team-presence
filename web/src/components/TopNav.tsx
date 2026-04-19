@@ -17,8 +17,8 @@ export default function TopNav({ current }: TopNavProps) {
   return (
     <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card">
       <div className="flex items-center gap-6">
-        <Link to="/" className="font-semibold hover:text-accent">
-          team-presence
+        <Link to="/" className="font-semibold hover:text-accent tracking-wider">
+          ZIRA
         </Link>
         <nav className="text-sm text-muted flex gap-4">
           {TABS.map((t) => (

@@ -35,22 +35,21 @@ export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
           gap: 10,
         }}
       >
+        <img
+          src="/zira-64.png"
+          alt=""
+          width={28}
+          height={28}
+          style={{ display: 'block' }}
+        />
         <div
           style={{
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            background: 'linear-gradient(135deg,var(--hv-accent),#8b5cf6)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            font: '700 14px/1 var(--font)',
+            letterSpacing: 1.2,
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="#fff">
-            <path d="M7 1 2 4v6l5 3 5-3V4L7 1Zm0 2 3 1.8v3.4L7 10 4 8.2V4.8L7 3Z" />
-          </svg>
+          ZIRA
         </div>
-        <div style={{ font: '600 13px/1.2 var(--font)' }}>team-presence</div>
       </div>
 
       {/* Search / ⌘K */}

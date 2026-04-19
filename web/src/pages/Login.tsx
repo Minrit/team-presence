@@ -37,26 +37,20 @@ export default function Login() {
           marginBottom: 14,
         }}
       >
-        <div
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            background: 'linear-gradient(135deg,var(--hv-accent),#8b5cf6)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="#fff">
-            <path d="M7 1 2 4v6l5 3 5-3V4L7 1Zm0 2 3 1.8v3.4L7 10 4 8.2V4.8L7 3Z" />
-          </svg>
+        <img
+          src="/zira-64.png"
+          alt=""
+          width={28}
+          height={28}
+          style={{ display: 'block' }}
+        />
+        <div style={{ font: '700 15px/1 var(--font)', letterSpacing: 1.4 }}>
+          ZIRA
         </div>
-        <div style={{ font: '600 14px/1 var(--font)' }}>team-presence</div>
       </div>
       <h1 style={{ font: '600 22px/1.2 var(--font)', marginBottom: 2 }}>Sign in</h1>
       <p style={{ font: '400 13px/1.4 var(--font)', color: 'var(--fg-3)', marginBottom: 18 }}>
-        Hive workspace
+        Project tracker
       </p>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label="Email">

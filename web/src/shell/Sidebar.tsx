@@ -8,7 +8,7 @@ import { useStories } from '../stories'
 import { NAV_ITEMS } from './nav'
 
 export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { data: stories } = useStories()
   const unclaimed = (stories ?? []).filter(
     (s) => s.status === 'todo' && !s.owner_id,
@@ -29,7 +29,7 @@ export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
       {/* Brand — read-only badge. AI-native posture: no workspace switcher. */}
       <div
         style={{
-          padding: '6px 18px 12px',
+          padding: '4px 18px 6px',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
@@ -54,7 +54,7 @@ export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
       </div>
 
       {/* Search / ⌘K */}
-      <div style={{ padding: '0 14px 10px' }}>
+      <div style={{ padding: '0 14px 8px' }}>
         <button
           type="button"
           onClick={onOpenCmd}
@@ -170,21 +170,21 @@ export function Sidebar({ onOpenCmd }: { onOpenCmd: () => void }) {
           </div>
           <button
             type="button"
+            onClick={() => {
+              void signOut()
+            }}
             style={{
-              width: 26,
-              height: 26,
-              borderRadius: 5,
-              border: 'none',
+              padding: '3px 8px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--hv-border)',
               background: 'transparent',
               color: 'var(--fg-3)',
               cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              font: '500 11px/1 var(--font)',
             }}
-            title="Settings"
+            title="Sign out"
           >
-            <Icon name="settings" size={14} />
+            Sign out
           </button>
         </div>
       )}

@@ -1,25 +1,27 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
 import { AgentChip } from '../design/AgentChip'
 import { Card } from '../design/Card'
-import { MarkdownView } from '../design/MarkdownView'
-import { Priority } from '../design/Priority'
-import { ProgressBar } from '../design/ProgressBar'
-import { StatusPill } from '../design/StatusPill'
+import { MarkdownEditor } from '../design/MarkdownEditor'
 import { StoryId } from '../design/StoryId'
 import { useSseGrid } from '../hooks/useSseGrid'
 import { useStoryActivityStream } from '../hooks/useStoryActivityStream'
 import {
-  useComments,
+  deleteStory,
+  patchStory,
   useEpics,
   useStory,
   useStoryActivity,
   useStoryRelations,
 } from '../stories'
 import { Terminal } from '../terminal/Terminal'
-import type { SessionMetaLite } from '../types'
+import type { SessionMetaLite, User } from '../types'
+import { AcChecklist } from '../components/AcChecklist'
+import { CommentThread } from '../components/CommentThread'
+import { RelationsEditor } from '../components/RelationsEditor'
+import { StoryMetaBar } from '../components/StoryMetaBar'
 import { ChangesPanel } from './story-panels/ChangesPanel'
 import { EmptyPanel } from './story-panels/EmptyPanel'
 import { RelatedPanel } from './story-panels/RelatedPanel'
@@ -27,21 +29,27 @@ import { RunsPanel } from './story-panels/RunsPanel'
 
 type RightTab = 'terminal' | 'changes' | 'runs' | 'related'
 
-/** Read-only story detail. AI-native posture: AC checkboxes display state
- *  only, comments show in-feed but there's no composer. Status moves /
- *  AC checks / comments flow through the MCP toolchain. */
+/** Editable story detail. Left pane: inline-editable title + tiptap
+ *  description + metadata bar + AC checklist + relations + activity +
+ *  comments. Right pane (Live terminal / Changes / Runs / Related) stays
+ *  strictly read-only — it's collector telemetry, not user data. */
 export default function CurrentStory() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   const { data: story, error } = useStory(id)
   const { data: activity } = useStoryActivity(id)
   const { data: relations } = useStoryRelations(id)
   const { data: epics } = useEpics()
-  const { data: comments } = useComments(id)
   const { data: sessions } = useSWR<SessionMetaLite[]>(
     '/api/v1/sessions',
     (k) => api.get<SessionMetaLite[]>(k),
     { refreshInterval: 15_000 },
+  )
+  const { data: users } = useSWR<User[]>(
+    '/api/v1/auth/users',
+    (k) => api.get<User[]>(k),
+    { refreshInterval: 60_000 },
   )
   const { tiles } = useSseGrid()
   const { live: liveActivity } = useStoryActivityStream(id)
@@ -53,6 +61,12 @@ export default function CurrentStory() {
     () => (story?.epic_id && epics ? epics.find((e) => e.id === story.epic_id) : undefined),
     [story?.epic_id, epics],
   )
+
+  const usersById = useMemo<Record<string, User>>(() => {
+    const m: Record<string, User> = {}
+    for (const u of users ?? []) m[u.id] = u
+    return m
+  }, [users])
 
   const storySessions = useMemo(() => {
     const byId = new Map<
@@ -107,8 +121,16 @@ export default function CurrentStory() {
     return <div style={{ padding: 32, color: 'var(--fg-3)' }}>Loading story…</div>
   }
 
-  const acDone = story.acceptance_criteria.filter((a) => a.done).length
-  const acTotal = story.acceptance_criteria.length
+  async function handleDelete() {
+    if (!story) return
+    if (!confirm(`Delete story "${story.name}"? This cannot be undone.`)) return
+    try {
+      await deleteStory(story.id)
+      navigate('/board')
+    } catch (err) {
+      alert(`Delete failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   return (
     <div className="story-split" style={{ height: '100%', padding: 18, minHeight: 0 }}>
@@ -149,127 +171,52 @@ export default function CurrentStory() {
               </span>
             )}
             <div style={{ flex: 1 }} />
-            <StatusPill status={story.status} />
-            {story.priority && <Priority level={story.priority} showLabel />}
-            {story.points != null && (
-              <span style={{ font: '500 12px/1 var(--mono)', color: 'var(--fg-3)' }}>
-                {story.points} pt
-              </span>
-            )}
-          </div>
-          <div style={{ font: '600 20px/1.3 var(--font)' }}>{story.name}</div>
-          {story.description && <MarkdownView source={story.description} />}
-        </Card>
-
-        {/* AC checklist — display only */}
-        <Card style={{ padding: 16 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: 8,
-              gap: 10,
-            }}
-          >
-            <div style={{ font: '600 13px/1 var(--font)' }}>Acceptance criteria</div>
-            {acTotal > 0 && (
-              <div
-                style={{
-                  font: '500 11px/1 var(--mono)',
-                  color: 'var(--fg-3)',
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  background: 'var(--bg-2)',
-                }}
-              >
-                {acDone} / {acTotal}
-              </div>
-            )}
-            <div style={{ flex: 1 }} />
-            <span
+            <button
+              type="button"
+              onClick={handleDelete}
               style={{
-                font: '400 11px/1 var(--font)',
-                color: 'var(--fg-4)',
+                padding: '3px 10px',
+                background: 'transparent',
+                color: 'var(--danger)',
+                border: '1px solid var(--hv-border)',
+                borderRadius: 'var(--radius-sm)',
+                font: '500 11.5px/1 var(--font)',
+                cursor: 'pointer',
               }}
-              title="Toggle AC items via the team-presence MCP (tp.ac.check / /tp-groom-ac)"
+              title="Delete story"
             >
-              /tp-groom-ac
-            </span>
+              Delete
+            </button>
           </div>
-          {acTotal > 0 && <ProgressBar value={acDone} total={acTotal} />}
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {acTotal === 0 && (
-              <div
-                style={{
-                  font: '400 12.5px/1.5 var(--font)',
-                  color: 'var(--fg-4)',
-                }}
-              >
-                No acceptance criteria yet.
-              </div>
-            )}
-            {story.acceptance_criteria.map((a, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 8,
-                  padding: '4px 0',
-                  font: '400 13px/1.45 var(--font)',
-                  color: a.done ? 'var(--fg-3)' : 'var(--hv-fg)',
-                  textDecoration: a.done ? 'line-through' : 'none',
-                }}
-              >
-                <AcGlyph done={a.done} />
-                <span style={{ flex: 1, whiteSpace: 'pre-wrap' }}>{a.text}</span>
-              </div>
-            ))}
-          </div>
+
+          <TitleEditor
+            key={story.id}
+            initial={story.name}
+            onSave={async (next) => {
+              if (next.trim() === story.name) return
+              await patchStory(story.id, { name: next.trim() })
+            }}
+          />
+
+          <StoryMetaBar story={story} />
+
+          <DescriptionEditor
+            key={`desc-${story.id}`}
+            initial={story.description}
+            onSave={async (next) => {
+              if (next === story.description) return
+              await patchStory(story.id, { description: next })
+            }}
+          />
         </Card>
 
-        {/* Relations */}
-        {relations && (relations.blocks.length > 0 || relations.blocked_by.length > 0) && (
-          <Card style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ font: '600 13px/1 var(--font)' }}>Relations</div>
-            {relations.blocked_by.length > 0 && (
-              <div style={{ font: '400 12.5px/1.4 var(--font)', color: 'var(--fg-2)' }}>
-                <span style={{ color: 'var(--danger)', marginRight: 6 }}>blocked by</span>
-                {relations.blocked_by.map((rid) => (
-                  <Link
-                    key={rid}
-                    to={`/story/${rid}`}
-                    style={{
-                      marginRight: 8,
-                      color: 'var(--hv-accent)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <StoryId id={rid} />
-                  </Link>
-                ))}
-              </div>
-            )}
-            {relations.blocks.length > 0 && (
-              <div style={{ font: '400 12.5px/1.4 var(--font)', color: 'var(--fg-2)' }}>
-                <span style={{ color: 'var(--warning)', marginRight: 6 }}>blocks</span>
-                {relations.blocks.map((rid) => (
-                  <Link
-                    key={rid}
-                    to={`/story/${rid}`}
-                    style={{
-                      marginRight: 8,
-                      color: 'var(--hv-accent)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <StoryId id={rid} />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
+        <Card style={{ padding: 16 }}>
+          <AcChecklist storyId={story.id} items={story.acceptance_criteria} />
+        </Card>
+
+        <Card style={{ padding: 16 }}>
+          <RelationsEditor storyId={story.id} relations={relations} />
+        </Card>
 
         {/* Activity timeline */}
         <Card style={{ padding: 16 }}>
@@ -320,24 +267,14 @@ export default function CurrentStory() {
               </div>
             ))}
           </div>
-          {comments && comments.length > 0 && (
-            <div
-              style={{
-                marginTop: 12,
-                paddingTop: 10,
-                borderTop: '1px solid var(--hv-border)',
-                font: '400 11.5px/1 var(--font)',
-                color: 'var(--fg-3)',
-              }}
-            >
-              {comments.length} comment{comments.length === 1 ? '' : 's'} — post new ones via
-              <span className="mono"> /tp-comment</span> (see docs/ai-native.md)
-            </div>
-          )}
+        </Card>
+
+        <Card style={{ padding: 16 }}>
+          <CommentThread storyId={story.id} usersById={usersById} />
         </Card>
       </div>
 
-      {/* RIGHT — tabbed pane */}
+      {/* RIGHT — tabbed pane (read-only: live collector data) */}
       <div
         style={{
           minWidth: 0,
@@ -452,26 +389,127 @@ export default function CurrentStory() {
   )
 }
 
-function AcGlyph({ done }: { done: boolean }) {
-  if (done) {
+/** Click-to-edit title input. Enter / blur saves; Esc cancels. */
+function TitleEditor({
+  initial,
+  onSave,
+}: {
+  initial: string
+  onSave: (next: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(initial)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    setValue(initial)
+  }, [initial])
+
+  async function commit() {
+    setEditing(false)
+    const next = value.trim()
+    if (next === '' || next === initial) {
+      setValue(initial)
+      return
+    }
+    try {
+      await onSave(next)
+    } catch (err) {
+      alert(`Rename failed: ${err instanceof Error ? err.message : String(err)}`)
+      setValue(initial)
+    }
+  }
+
+  if (!editing) {
     return (
-      <svg width="14" height="14" viewBox="0 0 14 14" style={{ marginTop: 3, flexShrink: 0 }}>
-        <circle cx="7" cy="7" r="6.5" fill="var(--success)" />
-        <polyline
-          points="4,7.2 6.2,9.4 10.2,5"
-          fill="none"
-          stroke="#fff"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <h2
+        onClick={() => {
+          setEditing(true)
+          setTimeout(() => inputRef.current?.select(), 0)
+        }}
+        style={{
+          margin: 0,
+          font: '600 20px/1.3 var(--font)',
+          color: 'var(--hv-fg)',
+          cursor: 'text',
+          padding: '2px 4px',
+          borderRadius: 4,
+        }}
+        title="Click to rename"
+      >
+        {initial}
+      </h2>
     )
   }
+
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" style={{ marginTop: 3, flexShrink: 0 }}>
-      <circle cx="7" cy="7" r="6" fill="none" stroke="var(--fg-4)" strokeWidth="1.5" />
-    </svg>
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          void commit()
+        } else if (e.key === 'Escape') {
+          setValue(initial)
+          setEditing(false)
+        }
+      }}
+      autoFocus
+      style={{
+        font: '600 20px/1.3 var(--font)',
+        color: 'var(--hv-fg)',
+        background: 'var(--surface)',
+        border: '1px solid var(--hv-accent)',
+        borderRadius: 4,
+        padding: '2px 6px',
+        outline: 'none',
+      }}
+    />
+  )
+}
+
+/** Tiptap-backed description editor. Debounces saves at 500ms; this is on
+ *  top of the 200ms debounce inside MarkdownEditor so network traffic is
+ *  bounded even under heavy typing. */
+function DescriptionEditor({
+  initial,
+  onSave,
+}: {
+  initial: string
+  onSave: (next: string) => Promise<void>
+}) {
+  const [value, setValue] = useState(initial)
+  const lastSaved = useRef(initial)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setValue(initial)
+    lastSaved.current = initial
+  }, [initial])
+
+  function onChange(next: string) {
+    setValue(next)
+    if (next === lastSaved.current) return
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(async () => {
+      try {
+        await onSave(next)
+        lastSaved.current = next
+      } catch (err) {
+        alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }, 500)
+  }
+
+  return (
+    <MarkdownEditor
+      value={value}
+      onChange={onChange}
+      placeholder="Describe this story…  (Markdown, mermaid, code blocks supported)"
+    />
   )
 }
 

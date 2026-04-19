@@ -111,6 +111,67 @@ export async function claimStory(id: string, userId: string): Promise<Story> {
   return patchStory(id, { status: 'in_progress', owner_id: userId })
 }
 
+export async function patchComment(
+  storyId: string,
+  commentId: string,
+  body: string,
+): Promise<Comment> {
+  const c = await api.patch<Comment>(
+    `${storyCommentsKey(storyId)}/${commentId}`,
+    { body },
+  )
+  await Promise.all([
+    globalMutate(storyCommentsKey(storyId)),
+    globalMutate(storyActivityKey(storyId)),
+  ])
+  return c
+}
+
+export async function deleteComment(
+  storyId: string,
+  commentId: string,
+): Promise<void> {
+  await api.delete<void>(`${storyCommentsKey(storyId)}/${commentId}`)
+  await Promise.all([
+    globalMutate(storyCommentsKey(storyId)),
+    globalMutate(storyActivityKey(storyId)),
+  ])
+}
+
+export async function addRelation(
+  storyId: string,
+  kind: 'blocks',
+  to: string,
+): Promise<void> {
+  await api.post<unknown>(storyRelationsKey(storyId), { kind, to })
+  await Promise.all([
+    globalMutate(storyRelationsKey(storyId)),
+    globalMutate(storyRelationsKey(to)),
+    globalMutate(storyActivityKey(storyId)),
+  ])
+}
+
+export async function removeRelation(
+  storyId: string,
+  target: string,
+): Promise<void> {
+  await api.delete<void>(`${storyRelationsKey(storyId)}/${target}`)
+  await Promise.all([
+    globalMutate(storyRelationsKey(storyId)),
+    globalMutate(storyRelationsKey(target)),
+    globalMutate(storyActivityKey(storyId)),
+  ])
+}
+
+/** Replace the AC array on a story. Callers pass the full next array; this
+ *  is a thin wrapper around patchStory. */
+export function patchAc(
+  id: string,
+  next: AcceptanceCriterion[],
+): Promise<Story> {
+  return patchStory(id, { acceptance_criteria: next })
+}
+
 async function mutateAllStoryLists() {
   await globalMutate(
     (key) => typeof key === 'string' && key.startsWith(STORIES_KEY),

@@ -272,6 +272,7 @@ fn split_opt<T>(v: Option<Option<T>>) -> (bool, Option<T>) {
 
 fn priority_str(p: Priority) -> &'static str {
     match p {
+        Priority::P0 => "P0",
         Priority::P1 => "P1",
         Priority::P2 => "P2",
         Priority::P3 => "P3",

@@ -120,7 +120,7 @@ fn create_accepts_ac_as_array_or_string() {
 
 #[test]
 fn priority_serde() {
-    for p in ["P1", "P2", "P3", "P4"] {
+    for p in ["P0", "P1", "P2", "P3", "P4"] {
         let parsed: Priority = serde_json::from_str(&format!("\"{p}\"")).unwrap();
         let back = serde_json::to_string(&parsed).unwrap();
         assert_eq!(back, format!("\"{p}\""));

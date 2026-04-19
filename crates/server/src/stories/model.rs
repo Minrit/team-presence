@@ -51,6 +51,8 @@ impl std::str::FromStr for StoryStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "TEXT")]
 pub enum Priority {
+    #[serde(rename = "P0")]
+    P0,
     #[serde(rename = "P1")]
     P1,
     #[serde(rename = "P2")]
@@ -65,6 +67,7 @@ impl std::str::FromStr for Priority {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "P0" => Ok(Self::P0),
             "P1" => Ok(Self::P1),
             "P2" => Ok(Self::P2),
             "P3" => Ok(Self::P3),

@@ -29,10 +29,11 @@ export interface PriorityMeta {
 }
 
 export const PRIO_META: Record<Priority, PriorityMeta> = {
-  P1: { color: '#ef4444', label: 'Urgent', heights: [4, 6, 8], opacity: 1 },
-  P2: { color: '#f59e0b', label: 'High',   heights: [4, 6, 6], opacity: 0.85 },
-  P3: { color: '#71717a', label: 'Medium', heights: [3, 5, 6], opacity: 0.6 },
-  P4: { color: '#a1a1aa', label: 'Low',    heights: [3, 4, 5], opacity: 0.45 },
+  P0: { color: '#b91c1c', label: 'Critical', heights: [5, 8, 10], opacity: 1 },
+  P1: { color: '#ef4444', label: 'Urgent',   heights: [4, 6, 8],  opacity: 1 },
+  P2: { color: '#f59e0b', label: 'High',     heights: [4, 6, 6],  opacity: 0.85 },
+  P3: { color: '#71717a', label: 'Medium',   heights: [3, 5, 6],  opacity: 0.6 },
+  P4: { color: '#a1a1aa', label: 'Low',      heights: [3, 4, 5],  opacity: 0.45 },
 }
 
 export interface AgentMeta {

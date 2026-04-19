@@ -9,8 +9,8 @@ import { StoryId } from '../design/StoryId'
 import { claimStory, patchStory, useEpics, useStories } from '../stories'
 import type { Priority as PriorityLevel, Story } from '../types'
 
-const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P1', 'P2', 'P3']
-const PRIORITIES: PriorityLevel[] = ['P1', 'P2', 'P3', 'P4']
+const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P0', 'P1', 'P2', 'P3']
+const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
 /** Backlog = todo stories without an owner. Cards support Claim (assigns
  *  current user + moves to in_progress) and inline priority edit. */
@@ -291,5 +291,11 @@ const linkBtn: React.CSSProperties = {
 }
 
 function priorityColor(p: PriorityLevel): string {
-  return p === 'P1' ? '#ef4444' : p === 'P2' ? '#f59e0b' : p === 'P3' ? '#71717a' : '#a1a1aa'
+  return (
+    p === 'P0' ? '#b91c1c'
+      : p === 'P1' ? '#ef4444'
+      : p === 'P2' ? '#f59e0b'
+      : p === 'P3' ? '#71717a'
+      : '#a1a1aa'
+  )
 }

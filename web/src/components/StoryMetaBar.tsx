@@ -13,7 +13,7 @@ import type {
 import useSWR from 'swr'
 import { api } from '../api'
 
-const PRIORITIES: PriorityLevel[] = ['P1', 'P2', 'P3', 'P4']
+const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
 /** Editable metadata row shown at the top of CurrentStory. Each field is
  *  an inline dropdown or short text input that fires a single-field

@@ -79,7 +79,7 @@ export function CreateStoryDialogProvider({ children }: { children: ReactNode })
   )
 }
 
-const PRIORITIES: PriorityLevel[] = ['P1', 'P2', 'P3', 'P4']
+const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
 function CreateStoryDialog({
   defaultSprintId,

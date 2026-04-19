@@ -3,7 +3,7 @@ import { Priority } from '../../design/Priority'
 import { deleteStory, patchStory, useEpics } from '../../stories'
 import type { Priority as PriorityLevel, Story } from '../../types'
 
-const PRIORITIES: PriorityLevel[] = ['P1', 'P2', 'P3', 'P4']
+const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
 /** `⋯` popover menu attached to each BoardCard. Stops propagation so the
  *  trigger button doesn't open the story detail. */

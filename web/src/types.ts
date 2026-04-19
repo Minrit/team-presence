@@ -1,7 +1,7 @@
 // Wire types mirroring the server. Snake_case matches the server's serde output.
 
 export type StoryStatus = 'todo' | 'in_progress' | 'blocked' | 'review' | 'done'
-export type Priority = 'P1' | 'P2' | 'P3' | 'P4'
+export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4'
 
 export interface User {
   id: string

@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import { patchAc } from '../stories'
 import type { AcceptanceCriterion } from '../types'
 
-/** Editable AC checklist. Each mutation replaces the full `acceptance_criteria`
- *  array on the story (last-writer-wins; race window accepted for team size). */
+/** Controlled AC checklist. Parent holds the AC array as part of the story
+ *  draft; this component only reports intent back via onChange. */
 export function AcChecklist({
-  storyId,
   items,
+  onChange,
 }: {
-  storyId: string
   items: AcceptanceCriterion[]
+  onChange: (next: AcceptanceCriterion[]) => void
 }) {
   const [draft, setDraft] = useState('')
   const [editIdx, setEditIdx] = useState<number | null>(null)
@@ -18,35 +17,25 @@ export function AcChecklist({
   const total = items.length
   const done = items.filter((a) => a.done).length
 
-  async function replace(next: AcceptanceCriterion[]) {
-    try {
-      await patchAc(storyId, next)
-    } catch (err) {
-      alert(`AC update failed: ${msg(err)}`)
-    }
-  }
-
-  async function handleAdd() {
+  function handleAdd() {
     const text = draft.trim()
     if (!text) return
-    await replace([...items, { text, done: false }])
+    onChange([...items, { text, done: false }])
     setDraft('')
   }
 
-  async function handleToggle(i: number) {
-    const next = items.map((a, k) => (k === i ? { ...a, done: !a.done } : a))
-    await replace(next)
+  function handleToggle(i: number) {
+    onChange(items.map((a, k) => (k === i ? { ...a, done: !a.done } : a)))
   }
 
-  async function handleDelete(i: number) {
-    await replace(items.filter((_, k) => k !== i))
+  function handleDelete(i: number) {
+    onChange(items.filter((_, k) => k !== i))
   }
 
-  async function handleSaveEdit(i: number) {
+  function handleSaveEdit(i: number) {
     const text = editText.trim()
     if (!text) return
-    const next = items.map((a, k) => (k === i ? { ...a, text } : a))
-    await replace(next)
+    onChange(items.map((a, k) => (k === i ? { ...a, text } : a)))
     setEditIdx(null)
     setEditText('')
   }
@@ -111,13 +100,13 @@ export function AcChecklist({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    void handleSaveEdit(i)
+                    handleSaveEdit(i)
                   } else if (e.key === 'Escape') {
                     setEditIdx(null)
                     setEditText('')
                   }
                 }}
-                onBlur={() => void handleSaveEdit(i)}
+                onBlur={() => handleSaveEdit(i)}
                 autoFocus
                 style={{
                   flex: 1,
@@ -181,7 +170,7 @@ export function AcChecklist({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault()
-              void handleAdd()
+              handleAdd()
             }
           }}
           placeholder="Add a criterion…"
@@ -248,8 +237,4 @@ function rowBtn(color: string): React.CSSProperties {
     font: '500 12px/1 var(--font)',
     padding: '2px 4px',
   }
-}
-
-function msg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
 }

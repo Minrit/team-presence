@@ -9,7 +9,7 @@ import { StoryId } from '../design/StoryId'
 import { claimStory, patchStory, useEpics, useStories } from '../stories'
 import type { Priority as PriorityLevel, Story } from '../types'
 
-const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P0', 'P1', 'P2', 'P3']
+const PRIO_FILTERS: (PriorityLevel | 'all')[] = ['all', 'P0', 'P1', 'P2', 'P3', 'P4']
 const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
 /** Backlog = todo stories without an owner. Cards support Claim (assigns
@@ -67,19 +67,16 @@ export default function Backlog() {
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        {PRIO_FILTERS.map((p) => {
-          if (p !== 'all' && (counts[p] ?? 0) === 0) return null
-          return (
-            <Chip
-              key={p}
-              active={filter === p}
-              onClick={() => setFilter(p)}
-              color={p === 'all' ? undefined : priorityColor(p)}
-            >
-              {p === 'all' ? 'All' : p} · {counts[p] ?? 0}
-            </Chip>
-          )
-        })}
+        {PRIO_FILTERS.map((p) => (
+          <Chip
+            key={p}
+            active={filter === p}
+            onClick={() => setFilter(p)}
+            color={p === 'all' ? undefined : priorityColor(p)}
+          >
+            {p === 'all' ? 'All' : p} · {counts[p] ?? 0}
+          </Chip>
+        ))}
         <div style={{ flex: 1 }} />
         <button
           type="button"

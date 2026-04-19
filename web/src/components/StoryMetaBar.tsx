@@ -2,42 +2,36 @@ import { useAuth } from '../auth'
 import { Priority } from '../design/Priority'
 import { StatusPill } from '../design/StatusPill'
 import { useSprints } from '../sprints'
-import { patchStory, useEpics } from '../stories'
+import { useEpics } from '../stories'
 import { STATUSES, STATUS_LABEL } from '../types'
 import type {
   Priority as PriorityLevel,
-  Story,
   StoryStatus,
   User,
 } from '../types'
 import useSWR from 'swr'
 import { api } from '../api'
+import type { StoryDraft } from '../hooks/useStoryDraft'
 
 const PRIORITIES: PriorityLevel[] = ['P0', 'P1', 'P2', 'P3', 'P4']
 
-/** Editable metadata row shown at the top of CurrentStory. Each field is
- *  an inline dropdown or short text input that fires a single-field
- *  patchStory() on change. Clearing a nullable field sends explicit null. */
-export function StoryMetaBar({ story }: { story: Story }) {
+/** Controlled metadata row. Parent owns the draft; each field's onChange
+ *  patches the draft slice, and Save/Reset live upstream. */
+export function StoryMetaBar({
+  draft,
+  patch,
+}: {
+  draft: StoryDraft
+  patch: (p: Partial<StoryDraft>) => void
+}) {
   const { data: epics } = useEpics()
   const { data: sprints } = useSprints()
   const { data: users } = useSWR<User[]>(
     '/api/v1/auth/users',
-    (k) => api.get<User[]>(k),
+    (k: string) => api.get<User[]>(k),
     { refreshInterval: 60_000 },
   )
   const { user } = useAuth()
-
-  async function update<K extends keyof Story>(
-    field: K,
-    value: Story[K] | null,
-  ) {
-    try {
-      await patchStory(story.id, { [field]: value } as Record<string, unknown>)
-    } catch (err) {
-      alert(`Update failed: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }
 
   return (
     <div
@@ -52,17 +46,17 @@ export function StoryMetaBar({ story }: { story: Story }) {
     >
       <Field label="Status">
         <SelectPill
-          value={story.status}
-          onChange={(v) => update('status', v as StoryStatus)}
+          value={draft.status}
+          onChange={(v) => patch({ status: v as StoryStatus })}
           options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
           render={(v) => <StatusPill status={v as StoryStatus} dense />}
         />
       </Field>
       <Field label="Priority">
         <SelectPill
-          value={story.priority ?? ''}
+          value={draft.priority ?? ''}
           onChange={(v) =>
-            update('priority', (v === '' ? null : v) as PriorityLevel | null)
+            patch({ priority: (v === '' ? null : v) as PriorityLevel | null })
           }
           options={[
             { value: '', label: '— none —' },
@@ -75,14 +69,14 @@ export function StoryMetaBar({ story }: { story: Story }) {
       </Field>
       <Field label="Points">
         <NumberInput
-          value={story.points}
-          onChange={(n) => update('points', n)}
+          value={draft.points}
+          onChange={(n) => patch({ points: n })}
         />
       </Field>
       <Field label="Epic">
         <SelectPill
-          value={story.epic_id ?? ''}
-          onChange={(v) => update('epic_id', v === '' ? null : v)}
+          value={draft.epic_id ?? ''}
+          onChange={(v) => patch({ epic_id: v === '' ? null : v })}
           options={[
             { value: '', label: '— none —' },
             ...(epics ?? []).map((e) => ({ value: e.id, label: e.name })),
@@ -108,8 +102,8 @@ export function StoryMetaBar({ story }: { story: Story }) {
       </Field>
       <Field label="Sprint">
         <SelectPill
-          value={story.sprint_id ?? ''}
-          onChange={(v) => update('sprint_id', v === '' ? null : v)}
+          value={draft.sprint_id ?? ''}
+          onChange={(v) => patch({ sprint_id: v === '' ? null : v })}
           options={[
             { value: '', label: '— backlog —' },
             ...(sprints ?? []).map((s) => ({ value: s.id, label: s.name })),
@@ -122,14 +116,13 @@ export function StoryMetaBar({ story }: { story: Story }) {
       </Field>
       <Field label="Owner">
         <SelectPill
-          value={story.owner_id ?? ''}
-          onChange={(v) => update('owner_id', v === '' ? null : v)}
+          value={draft.owner_id ?? ''}
+          onChange={(v) => patch({ owner_id: v === '' ? null : v })}
           options={[
             { value: '', label: '— unassigned —' },
             ...(users ?? []).map((u) => ({
               value: u.id,
-              label:
-                u.display_name + (u.id === user?.id ? ' (me)' : ''),
+              label: u.display_name + (u.id === user?.id ? ' (me)' : ''),
             })),
           ]}
           render={(v) => {
@@ -140,16 +133,16 @@ export function StoryMetaBar({ story }: { story: Story }) {
       </Field>
       <Field label="Branch">
         <TextInput
-          value={story.branch ?? ''}
-          onChange={(s) => update('branch', s === '' ? null : s)}
+          value={draft.branch ?? ''}
+          onChange={(s) => patch({ branch: s === '' ? null : s })}
           placeholder="feat/..."
           width={160}
         />
       </Field>
       <Field label="PR">
         <TextInput
-          value={story.pr_ref ?? ''}
-          onChange={(s) => update('pr_ref', s === '' ? null : s)}
+          value={draft.pr_ref ?? ''}
+          onChange={(s) => patch({ pr_ref: s === '' ? null : s })}
           placeholder="#123"
           width={90}
         />
@@ -284,14 +277,9 @@ function TextInput({
   return (
     <input
       type="text"
-      defaultValue={value}
+      value={value}
       placeholder={placeholder}
-      onBlur={(e) => {
-        if (e.target.value !== value) onChange(e.target.value)
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-      }}
+      onChange={(e) => onChange(e.target.value)}
       style={{
         width,
         padding: '2px 6px',

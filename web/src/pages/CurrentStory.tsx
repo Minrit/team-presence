@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
@@ -6,6 +6,7 @@ import { AgentChip } from '../design/AgentChip'
 import { Card } from '../design/Card'
 import { MarkdownEditor } from '../design/MarkdownEditor'
 import { StoryId } from '../design/StoryId'
+import { useStoryDraft } from '../hooks/useStoryDraft'
 import { useSseGrid } from '../hooks/useSseGrid'
 import { useStoryActivityStream } from '../hooks/useStoryActivityStream'
 import {
@@ -29,10 +30,15 @@ import { RunsPanel } from './story-panels/RunsPanel'
 
 type RightTab = 'terminal' | 'changes' | 'runs' | 'related'
 
-/** Editable story detail. Left pane: inline-editable title + tiptap
- *  description + metadata bar + AC checklist + relations + activity +
- *  comments. Right pane (Live terminal / Changes / Runs / Related) stays
- *  strictly read-only — it's collector telemetry, not user data. */
+/** Editable story detail with a staged Save/Reset flow. The left pane's
+ *  title / description / metadata / AC checklist all feed one draft;
+ *  nothing is persisted until the user clicks Save.
+ *
+ *  Relations and Comments remain immediate — they're verb-actions (add
+ *  blocker, post comment) rather than form fields.
+ *
+ *  The right pane (Live terminal / Changes / Runs / Related) stays
+ *  strictly read-only — that's collector telemetry. */
 export default function CurrentStory() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -43,19 +49,22 @@ export default function CurrentStory() {
   const { data: epics } = useEpics()
   const { data: sessions } = useSWR<SessionMetaLite[]>(
     '/api/v1/sessions',
-    (k) => api.get<SessionMetaLite[]>(k),
+    (k: string) => api.get<SessionMetaLite[]>(k),
     { refreshInterval: 15_000 },
   )
   const { data: users } = useSWR<User[]>(
     '/api/v1/auth/users',
-    (k) => api.get<User[]>(k),
+    (k: string) => api.get<User[]>(k),
     { refreshInterval: 60_000 },
   )
   const { tiles } = useSseGrid()
   const { live: liveActivity } = useStoryActivityStream(id)
 
+  const { draft, patch, reset, dirty, diff, markClean } = useStoryDraft(story)
+
   const [tab, setTab] = useState<RightTab>('terminal')
   const [activeSession, setActiveSession] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const epic = useMemo(
     () => (story?.epic_id && epics ? epics.find((e) => e.id === story.epic_id) : undefined),
@@ -117,8 +126,23 @@ export default function CurrentStory() {
       </div>
     )
   }
-  if (!story) {
+  if (!story || !draft) {
     return <div style={{ padding: 32, color: 'var(--fg-3)' }}>Loading story…</div>
+  }
+
+  async function handleSave() {
+    if (!story || !dirty || saving) return
+    const payload = diff()
+    if (Object.keys(payload).length === 0) return
+    setSaving(true)
+    try {
+      await patchStory(story.id, payload)
+      markClean()
+    } catch (err) {
+      alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete() {
@@ -171,11 +195,56 @@ export default function CurrentStory() {
               </span>
             )}
             <div style={{ flex: 1 }} />
+            {dirty && (
+              <span
+                style={{
+                  font: '500 11px/1 var(--font)',
+                  color: 'var(--warning)',
+                  padding: '2px 7px',
+                  background: 'var(--bg-2)',
+                  borderRadius: 10,
+                }}
+              >
+                unsaved
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={reset}
+              disabled={!dirty || saving}
+              style={{
+                padding: '4px 10px',
+                background: 'transparent',
+                color: dirty ? 'var(--fg-2)' : 'var(--fg-4)',
+                border: '1px solid var(--hv-border)',
+                borderRadius: 'var(--radius-sm)',
+                font: '500 11.5px/1 var(--font)',
+                cursor: dirty && !saving ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!dirty || saving}
+              style={{
+                padding: '4px 12px',
+                background: dirty ? 'var(--hv-accent)' : 'var(--bg-2)',
+                color: dirty ? 'white' : 'var(--fg-4)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                font: '500 11.5px/1 var(--font)',
+                cursor: dirty && !saving ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
             <button
               type="button"
               onClick={handleDelete}
               style={{
-                padding: '3px 10px',
+                padding: '4px 10px',
                 background: 'transparent',
                 color: 'var(--danger)',
                 border: '1px solid var(--hv-border)',
@@ -189,29 +258,36 @@ export default function CurrentStory() {
             </button>
           </div>
 
-          <TitleEditor
-            key={story.id}
-            initial={story.name}
-            onSave={async (next) => {
-              if (next.trim() === story.name) return
-              await patchStory(story.id, { name: next.trim() })
+          <input
+            value={draft.name}
+            onChange={(e) => patch({ name: e.target.value })}
+            placeholder="Story title"
+            style={{
+              font: '600 20px/1.3 var(--font)',
+              color: 'var(--hv-fg)',
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              padding: '2px 0',
             }}
           />
 
-          <StoryMetaBar story={story} />
+          <StoryMetaBar draft={draft} patch={patch} />
 
-          <DescriptionEditor
+          <MarkdownEditor
             key={`desc-${story.id}`}
-            initial={story.description}
-            onSave={async (next) => {
-              if (next === story.description) return
-              await patchStory(story.id, { description: next })
-            }}
+            value={draft.description}
+            onChange={(md) => patch({ description: md })}
+            placeholder="Describe this story…  (Markdown, mermaid, code blocks supported)"
+            debounceMs={0}
           />
         </Card>
 
         <Card style={{ padding: 16 }}>
-          <AcChecklist storyId={story.id} items={story.acceptance_criteria} />
+          <AcChecklist
+            items={draft.acceptance_criteria}
+            onChange={(next) => patch({ acceptance_criteria: next })}
+          />
         </Card>
 
         <Card style={{ padding: 16 }}>
@@ -386,130 +462,6 @@ export default function CurrentStory() {
         </div>
       </div>
     </div>
-  )
-}
-
-/** Click-to-edit title input. Enter / blur saves; Esc cancels. */
-function TitleEditor({
-  initial,
-  onSave,
-}: {
-  initial: string
-  onSave: (next: string) => Promise<void>
-}) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(initial)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  useEffect(() => {
-    setValue(initial)
-  }, [initial])
-
-  async function commit() {
-    setEditing(false)
-    const next = value.trim()
-    if (next === '' || next === initial) {
-      setValue(initial)
-      return
-    }
-    try {
-      await onSave(next)
-    } catch (err) {
-      alert(`Rename failed: ${err instanceof Error ? err.message : String(err)}`)
-      setValue(initial)
-    }
-  }
-
-  if (!editing) {
-    return (
-      <h2
-        onClick={() => {
-          setEditing(true)
-          setTimeout(() => inputRef.current?.select(), 0)
-        }}
-        style={{
-          margin: 0,
-          font: '600 20px/1.3 var(--font)',
-          color: 'var(--hv-fg)',
-          cursor: 'text',
-          padding: '2px 4px',
-          borderRadius: 4,
-        }}
-        title="Click to rename"
-      >
-        {initial}
-      </h2>
-    )
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => void commit()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault()
-          void commit()
-        } else if (e.key === 'Escape') {
-          setValue(initial)
-          setEditing(false)
-        }
-      }}
-      autoFocus
-      style={{
-        font: '600 20px/1.3 var(--font)',
-        color: 'var(--hv-fg)',
-        background: 'var(--surface)',
-        border: '1px solid var(--hv-accent)',
-        borderRadius: 4,
-        padding: '2px 6px',
-        outline: 'none',
-      }}
-    />
-  )
-}
-
-/** Tiptap-backed description editor. Debounces saves at 500ms; this is on
- *  top of the 200ms debounce inside MarkdownEditor so network traffic is
- *  bounded even under heavy typing. */
-function DescriptionEditor({
-  initial,
-  onSave,
-}: {
-  initial: string
-  onSave: (next: string) => Promise<void>
-}) {
-  const [value, setValue] = useState(initial)
-  const lastSaved = useRef(initial)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    setValue(initial)
-    lastSaved.current = initial
-  }, [initial])
-
-  function onChange(next: string) {
-    setValue(next)
-    if (next === lastSaved.current) return
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(async () => {
-      try {
-        await onSave(next)
-        lastSaved.current = next
-      } catch (err) {
-        alert(`Save failed: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    }, 500)
-  }
-
-  return (
-    <MarkdownEditor
-      value={value}
-      onChange={onChange}
-      placeholder="Describe this story…  (Markdown, mermaid, code blocks supported)"
-    />
   )
 }
 

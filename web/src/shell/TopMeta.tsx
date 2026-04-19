@@ -1,7 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import useSWR from 'swr'
 import { api } from '../api'
-import { useCreateStoryDialog } from '../components/CreateStoryDialog'
 import { AvatarStack, userToAvatar } from '../design/Avatar'
 import { LiveDot } from '../design/LiveDot'
 import type { SessionMetaLite, User } from '../types'
@@ -9,12 +8,12 @@ import { activeNavLabel } from './nav'
 
 const sessionsFetcher = (k: string) => api.get<SessionMetaLite[]>(k)
 
-/** Status strip with breadcrumb, live-session count, online avatars, and a
- *  global "New" button (also bound to ⌘N) that opens the shared
- *  CreateStoryDialog from anywhere in the app. */
+/** Status strip with breadcrumb, live-session count, and online avatars.
+ *  The global "New" button was removed — story creation is reachable from
+ *  the Board / Backlog pages (where context is obvious) and the ⌘N
+ *  keyboard shortcut remains available from anywhere. */
 export function TopMeta() {
   const { pathname } = useLocation()
-  const { open: openCreateStory } = useCreateStoryDialog()
   const { data: sessions } = useSWR<SessionMetaLite[]>(
     '/api/v1/sessions',
     sessionsFetcher,
@@ -56,27 +55,6 @@ export function TopMeta() {
       </span>
 
       <div style={{ flex: 1 }} />
-
-      <button
-        type="button"
-        onClick={() => openCreateStory()}
-        title="New story (⌘N)"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 11px',
-          background: 'var(--hv-accent)',
-          color: 'white',
-          border: 'none',
-          borderRadius: 'var(--radius-sm)',
-          font: '500 12px/1 var(--font)',
-          cursor: 'pointer',
-        }}
-      >
-        <span style={{ font: '500 13px/1 var(--mono)' }}>+</span>
-        New
-      </button>
 
       <div
         title="Active collector sessions"

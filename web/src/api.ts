@@ -27,18 +27,60 @@ export class ApiError extends Error {
 
 type Json = unknown
 
-async function request<T>(method: string, path: string, body?: Json): Promise<T> {
+async function rawFetch(method: string, path: string, body?: Json): Promise<Response> {
   const headers: Record<string, string> = {}
   const token = getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
-
-  const res = await fetch(path, {
+  return fetch(path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     credentials: 'include',
   })
+}
+
+// Silent token refresh — swaps the access_token using the refresh cookie.
+// Returns true if a new access_token was minted, false otherwise.
+// Concurrent 401s share a single in-flight refresh so we don't flood the
+// server with /auth/refresh calls when a page of SWR hooks all 401 at once.
+let refreshInFlight: Promise<boolean> | null = null
+
+export async function attemptSilentRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    try {
+      const res = await fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) return false
+      const data = (await res.json()) as { access_token?: string }
+      if (!data.access_token) return false
+      setToken(data.access_token)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
+}
+
+async function request<T>(method: string, path: string, body?: Json): Promise<T> {
+  let res = await rawFetch(method, path, body)
+
+  // On 401, try one silent refresh via the HttpOnly refresh cookie and
+  // replay the original request once. Skip the retry dance on the auth
+  // endpoints themselves to avoid infinite loops.
+  const isAuthEndpoint = path.startsWith('/api/v1/auth/')
+  if (res.status === 401 && !isAuthEndpoint) {
+    const refreshed = await attemptSilentRefresh()
+    if (refreshed) {
+      res = await rawFetch(method, path, body)
+    }
+  }
 
   if (res.status === 204 || res.headers.get('content-length') === '0') {
     return undefined as T

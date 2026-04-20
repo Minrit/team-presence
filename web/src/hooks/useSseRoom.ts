@@ -9,7 +9,7 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { useEffect, useRef, useState } from 'react'
-import { getToken } from '../api'
+import { attemptSilentRefresh, getToken } from '../api'
 import type { RoomFrame } from '../types'
 
 export interface RoomEntry {
@@ -35,11 +35,13 @@ export function useSseRoom(sessionId: string | null): UseSseRoomResult {
 
   useEffect(() => {
     if (!sessionId) return
-    const ctrl = new AbortController()
+    let unmounted = false
+    let ctrl = new AbortController()
     setEntries([])
     setError(null)
     lastIdRef.current = '0'
 
+    let refreshedOnce = false
     const run = async () => {
       try {
         await fetchEventSource(`/sse/room/${sessionId}`, {
@@ -52,9 +54,20 @@ export function useSseRoom(sessionId: string | null): UseSseRoomResult {
           onopen: async (r) => {
             if (r.ok && r.headers.get('content-type')?.includes('text/event-stream')) {
               setConnected(true)
+              refreshedOnce = false
               return
             }
-            if (r.status === 401 || r.status === 403) {
+            if (r.status === 401) {
+              if (!refreshedOnce && (await attemptSilentRefresh())) {
+                refreshedOnce = true
+                ctrl.abort()
+                return
+              }
+              setError('unauthorized')
+              ctrl.abort()
+              return
+            }
+            if (r.status === 403) {
               setError('unauthorized')
               ctrl.abort()
               return
@@ -112,10 +125,16 @@ export function useSseRoom(sessionId: string | null): UseSseRoomResult {
           setError((err as Error).message)
         }
       }
+      if (!unmounted && refreshedOnce) {
+        refreshedOnce = false
+        ctrl = new AbortController()
+        run()
+      }
     }
     run()
 
     return () => {
+      unmounted = true
       ctrl.abort()
       setConnected(false)
     }

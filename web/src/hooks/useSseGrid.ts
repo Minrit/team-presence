@@ -5,7 +5,7 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { useEffect, useRef, useState } from 'react'
-import { getToken } from '../api'
+import { attemptSilentRefresh, getToken } from '../api'
 import type { GridTile } from '../types'
 
 const EVICT_AFTER_ENDED_MS = 5 * 60_000
@@ -24,10 +24,12 @@ export function useSseGrid(): UseSseGridResult {
   const endedAtRef = useRef<Map<string, number>>(new Map())
 
   useEffect(() => {
-    const ctrl = new AbortController()
+    let unmounted = false
+    let ctrl = new AbortController()
     setTiles([])
     setError(null)
 
+    let refreshedOnce = false
     const run = async () => {
       try {
         await fetchEventSource('/sse/grid', {
@@ -37,9 +39,23 @@ export function useSseGrid(): UseSseGridResult {
           onopen: async (r) => {
             if (r.ok) {
               setConnected(true)
+              refreshedOnce = false
               return
             }
-            if (r.status === 401 || r.status === 403) {
+            if (r.status === 401) {
+              // access token likely expired — try a silent refresh, then
+              // reconnect once. If that still 401s, the user really is
+              // logged out; surface the error.
+              if (!refreshedOnce && (await attemptSilentRefresh())) {
+                refreshedOnce = true
+                ctrl.abort()
+                return
+              }
+              setError('unauthorized')
+              ctrl.abort()
+              return
+            }
+            if (r.status === 403) {
               setError('unauthorized')
               ctrl.abort()
             }
@@ -76,6 +92,13 @@ export function useSseGrid(): UseSseGridResult {
           setError((err as Error).message)
         }
       }
+      // If we aborted intentionally to reconnect with a freshly refreshed
+      // access token, spin up a new AbortController and re-enter the loop.
+      if (!unmounted && refreshedOnce) {
+        refreshedOnce = false
+        ctrl = new AbortController()
+        run()
+      }
     }
     run()
 
@@ -97,6 +120,7 @@ export function useSseGrid(): UseSseGridResult {
     }, 30_000)
 
     return () => {
+      unmounted = true
       ctrl.abort()
       clearInterval(interval)
       setConnected(false)

@@ -4,7 +4,7 @@
 
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { useEffect, useState } from 'react'
-import { getToken } from '../api'
+import { attemptSilentRefresh, getToken } from '../api'
 import type { StoryActivity } from '../types'
 
 export function useStoryActivityStream(storyId: string | null | undefined): {
@@ -20,17 +20,33 @@ export function useStoryActivityStream(storyId: string | null | undefined): {
     if (!storyId) return
     setLive([])
     setError(null)
-    const ctrl = new AbortController()
+    let unmounted = false
+    let ctrl = new AbortController()
+    let refreshedOnce = false
 
-    ;(async () => {
+    const run = async () => {
       try {
         await fetchEventSource(`/sse/story/${storyId}/activity`, {
           signal: ctrl.signal,
           headers: { Authorization: `Bearer ${getToken() ?? ''}` },
           openWhenHidden: true,
           onopen: async (r) => {
-            if (r.ok) setConnected(true)
-            else if (r.status === 401 || r.status === 403) {
+            if (r.ok) {
+              setConnected(true)
+              refreshedOnce = false
+              return
+            }
+            if (r.status === 401) {
+              if (!refreshedOnce && (await attemptSilentRefresh())) {
+                refreshedOnce = true
+                ctrl.abort()
+                return
+              }
+              setError('unauthorized')
+              ctrl.abort()
+              return
+            }
+            if (r.status === 403) {
               setError('unauthorized')
               ctrl.abort()
             } else if (r.status === 404) {
@@ -57,9 +73,18 @@ export function useStoryActivityStream(storyId: string | null | undefined): {
           setError((err as Error).message)
         }
       }
-    })()
+      if (!unmounted && refreshedOnce) {
+        refreshedOnce = false
+        ctrl = new AbortController()
+        run()
+      }
+    }
+    run()
 
-    return () => ctrl.abort()
+    return () => {
+      unmounted = true
+      ctrl.abort()
+    }
   }, [storyId])
 
   return { live, connected, error }

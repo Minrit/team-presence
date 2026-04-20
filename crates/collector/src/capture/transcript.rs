@@ -27,6 +27,14 @@ const POLL_INTERVAL: Duration = Duration::from_millis(200);
 /// but partial writes exist in the wild — we buffer and only split on \n.
 const MIN_READ_CHUNK: u64 = 64;
 
+/// How long the transcript file may stay missing before we abandon the tail.
+/// Claude Code (especially when launched via cmux, tmux wrappers, or with a
+/// resumed session id) can delay creating the transcript file for several
+/// minutes after SessionStart fires — the old 30-second window declared the
+/// session dead before a single byte was ever written. 10 minutes covers the
+/// observed cases while still bounding ghost tailers if the path never shows.
+const MISSING_GRACE: Duration = Duration::from_secs(600);
+
 pub struct Tailer {
     session_id: Uuid,
     path: PathBuf,
@@ -46,7 +54,8 @@ impl Tailer {
         }
     }
 
-    /// Run until the consumer drops or the file disappears for >30s.
+    /// Run until the consumer drops or the file is missing longer than
+    /// `MISSING_GRACE`.
     pub async fn run(mut self) -> anyhow::Result<()> {
         tracing::info!(
             component = "collector.transcript",
@@ -65,7 +74,7 @@ impl Tailer {
                         missing_since = Some(std::time::Instant::now());
                     }
                     if missing_since
-                        .map(|t| t.elapsed() > Duration::from_secs(30))
+                        .map(|t| t.elapsed() > MISSING_GRACE)
                         .unwrap_or(false)
                     {
                         tracing::warn!(
@@ -73,7 +82,8 @@ impl Tailer {
                             phase = "tail_stop_missing",
                             session_id = %self.session_id,
                             path = %self.path.display(),
-                            "transcript missing >30s — stopping tail"
+                            grace_secs = MISSING_GRACE.as_secs(),
+                            "transcript never appeared — stopping tail"
                         );
                         break;
                     }
@@ -102,7 +112,24 @@ impl Tailer {
             Err(e) => return Err(e.into()),
         };
 
-        if len <= self.position {
+        // Claude Code will sometimes truncate and rewrite the transcript on
+        // resume. If the file shrinks below our recorded position, treat it as
+        // a fresh file and start reading from byte 0.
+        if len < self.position {
+            tracing::info!(
+                component = "collector.transcript",
+                phase = "tail_reset_truncated",
+                session_id = %self.session_id,
+                path = %self.path.display(),
+                prev_position = self.position,
+                new_len = len,
+                "transcript shrank — restarting from offset 0"
+            );
+            self.position = 0;
+            self.carry.clear();
+        }
+
+        if len == self.position {
             return Ok(true);
         }
         if len - self.position < MIN_READ_CHUNK && !self.carry.is_empty() {
@@ -387,6 +414,84 @@ mod tests {
         } else {
             panic!();
         }
+    }
+
+    #[tokio::test]
+    async fn tail_survives_file_truncate_and_rewrite() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("t.jsonl");
+        // Seed with a long initial record and wait for the tailer to consume it.
+        let long_filler = "x".repeat(1024);
+        let first = format!(
+            r#"{{"type":"user","message":{{"role":"user","content":"one {long_filler}"}}}}"#
+        );
+        tokio::fs::write(&path, format!("{first}\n").as_bytes())
+            .await
+            .unwrap();
+
+        let (tx, mut rx) = mpsc::channel(16);
+        let tailer = Tailer::new(sid(), path.clone(), tx);
+        let handle = tokio::spawn(tailer.run());
+
+        let got = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+            .await
+            .expect("first frame")
+            .unwrap();
+        if let Frame::SessionContent { text, .. } = got {
+            assert!(text.0.starts_with("one "));
+        }
+
+        // Simulate Claude Code rewriting the transcript on resume: shorter
+        // content replaces the long initial file.
+        let second = r#"{"type":"user","message":{"role":"user","content":"two"}}"#;
+        tokio::fs::write(&path, format!("{second}\n").as_bytes())
+            .await
+            .unwrap();
+
+        let got = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+            .await
+            .expect("second frame after truncate")
+            .unwrap();
+        if let Frame::SessionContent { text, .. } = got {
+            assert_eq!(
+                text.0, "two",
+                "tailer must re-read from 0 when file shrinks"
+            );
+        } else {
+            panic!("wrong frame");
+        }
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn tail_waits_for_lazily_created_file() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let path = tmp.path().join("late.jsonl");
+        // File does NOT exist when the tailer starts.
+        let (tx, mut rx) = mpsc::channel(16);
+        let tailer = Tailer::new(sid(), path.clone(), tx);
+        let handle = tokio::spawn(tailer.run());
+
+        // Create the file 400 ms later — well past the old 30s give-up would
+        // not matter here, but this confirms the tailer tolerates a missing
+        // start and still picks up content when it appears.
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        let line = r#"{"type":"user","message":{"role":"user","content":"late"}}"#;
+        tokio::fs::write(&path, format!("{line}\n").as_bytes())
+            .await
+            .unwrap();
+
+        let got = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+            .await
+            .expect("tailer should deliver lazy-created content")
+            .unwrap();
+        if let Frame::SessionContent { text, .. } = got {
+            assert_eq!(text.0, "late");
+        } else {
+            panic!("wrong frame");
+        }
+        handle.abort();
     }
 
     #[tokio::test]

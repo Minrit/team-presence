@@ -854,7 +854,7 @@ impl TpMcp {
     }
 
     #[tool(
-        description = "Install the Claude Code SessionStart + Stop hooks into ~/.claude/hooks so the collector picks up new sessions. Pass force=true to overwrite."
+        description = "Install the Claude Code SessionStart hook scripts into ~/.claude/hooks and register them in ~/.claude/settings.json so the collector picks up new sessions. Pass force=true to overwrite existing scripts."
     )]
     pub async fn tp_collector_install_hooks(
         &self,
@@ -872,11 +872,17 @@ impl TpMcp {
             .iter()
             .map(|p| p.display().to_string())
             .collect();
+        let settings_line = match (report.settings_path.as_ref(), report.settings_updated) {
+            (Some(p), true) => format!("\nsettings_wired={}", p.display()),
+            (Some(p), false) => format!("\nsettings_already_wired={}", p.display()),
+            (None, _) => String::new(),
+        };
         ok_msg(format!(
-            "dir={}\ninstalled=[{}]\nskipped=[{}]",
+            "dir={}\ninstalled=[{}]\nskipped=[{}]{}",
             report.dir.display(),
             installed.join(", "),
             skipped.join(", "),
+            settings_line,
         ))
     }
 
@@ -885,13 +891,21 @@ impl TpMcp {
         &self,
         Parameters(_): Parameters<EmptyArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let removed = team_presence_collector::hooks::uninstall(None)
+        let report = team_presence_collector::hooks::uninstall(None)
             .map_err(|e| McpError::Other(e.to_string()))?;
-        let list: Vec<String> = removed.iter().map(|p| p.display().to_string()).collect();
+        let list: Vec<String> = report
+            .removed_scripts
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect();
+        let settings_line = match (report.settings_path.as_ref(), report.settings_updated) {
+            (Some(p), true) => format!("\nsettings_cleaned={}", p.display()),
+            _ => String::new(),
+        };
         ok_msg(if list.is_empty() {
-            "no hooks removed".into()
+            format!("no hooks removed{settings_line}")
         } else {
-            format!("removed:\n  {}", list.join("\n  "))
+            format!("removed:\n  {}{}", list.join("\n  "), settings_line)
         })
     }
 

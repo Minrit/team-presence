@@ -124,17 +124,27 @@ fn cmd_install_hooks(args: InstallHooksArgs) -> anyhow::Result<()> {
     if report.installed.is_empty() && !report.skipped.is_empty() {
         println!("(pass --force to overwrite existing scripts.)");
     }
+    if let Some(path) = &report.settings_path {
+        if report.settings_updated {
+            println!("  + wired SessionStart into {}", path.display());
+        } else {
+            println!("  = SessionStart already wired in {}", path.display());
+        }
+    }
     Ok(())
 }
 
 fn cmd_uninstall_hooks() -> anyhow::Result<()> {
-    let removed = hooks::uninstall(None)?;
-    if removed.is_empty() {
+    let report = hooks::uninstall(None)?;
+    if report.removed_scripts.is_empty() {
         println!("no team-presence hooks found.");
     } else {
-        for p in &removed {
+        for p in &report.removed_scripts {
             println!("removed {}", p.display());
         }
+    }
+    if let (Some(path), true) = (report.settings_path.as_ref(), report.settings_updated) {
+        println!("cleaned team-presence entries from {}", path.display());
     }
     Ok(())
 }

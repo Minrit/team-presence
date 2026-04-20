@@ -108,15 +108,18 @@ pub async fn run(creds: Credentials, agent_kind: AgentKind) -> anyhow::Result<()
                 }
             }
             HookEvent::Stop { payload } => {
+                // Claude Code's `Stop` hook fires at the end of every
+                // assistant turn, not at session termination. Treat it as
+                // a no-op: the session stays active until the collector
+                // process exits or the transcript file goes missing. The
+                // server reaper flips stale sessions to offline after the
+                // heartbeat grace window, which is the authoritative signal.
                 let session_id = session_uuid(payload.session_id.as_deref());
-                sessions.remove(session_id);
-                let _ = frame_tx
-                    .send(Frame::SessionEnd {
-                        session_id,
-                        ended_at: Utc::now(),
-                        exit_code: None,
-                    })
-                    .await;
+                tracing::trace!(
+                    component = "collector.start",
+                    phase = "stop_noop",
+                    session_id = %session_id,
+                );
             }
         }
     }

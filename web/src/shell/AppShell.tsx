@@ -1,13 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { CreateStoryDialogProvider } from '../components/CreateStoryDialog'
 import { CommandPalette } from './CommandPalette'
-import { Sidebar } from './Sidebar'
-import { TopMeta } from './TopMeta'
+import { Masthead } from './Masthead'
+import { NavBar } from './NavBar'
+import { StatusBar } from './StatusBar'
 
+/** v2 shell — masthead on top, horizontal nav under it, main, status-bar
+ *  footer. No sidebar. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [cmdOpen, setCmdOpen] = useState(false)
 
-  // ⌘K / Ctrl-K — open/close palette. Also Esc closes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -22,27 +24,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <CreateStoryDialogProvider>
       <div
+        className="paper-tex"
         style={{
           display: 'flex',
-          flexDirection: 'row',
+          flexDirection: 'column',
           height: '100%',
-          background: 'var(--hv-bg)',
+          background: 'var(--cream)',
         }}
       >
-        <Sidebar onOpenCmd={() => setCmdOpen(true)} />
+        <Masthead />
+        <NavBar onOpenCmd={() => setCmdOpen(true)} />
         <main
           style={{
             flex: 1,
             minWidth: 0,
             minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            overflow: 'auto',
           }}
         >
-          <TopMeta />
-          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>{children}</div>
+          {children}
         </main>
+        <StatusBar />
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
       </div>
     </CreateStoryDialogProvider>

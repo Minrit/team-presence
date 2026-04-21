@@ -5,7 +5,6 @@ import AgentSetup from './pages/AgentSetup'
 import Backlog from './pages/Backlog'
 import Board from './pages/Board'
 import Compute from './pages/Compute'
-import Connect from './pages/Connect'
 import CurrentStory from './pages/CurrentStory'
 import Kanban from './pages/Kanban'
 import Members from './pages/Members'
@@ -35,7 +34,9 @@ export default function App() {
             <Route path="/members" element={<Members />} />
             <Route path="/compute" element={<Compute />} />
             <Route path="/overview" element={<Overview />} />
-            <Route path="/connect" element={<Connect />} />
+            {/* /connect is folded into /agent-setup — both kept as an alias
+                so any bookmarked links continue to work. */}
+            <Route path="/connect" element={<Navigate to="/agent-setup" replace />} />
             <Route path="/agent-setup" element={<AgentSetup />} />
             <Route path="/kanban" element={<Kanban />} />
             <Route path="/stories" element={<Stories />} />

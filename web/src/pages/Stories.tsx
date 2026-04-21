@@ -46,9 +46,9 @@ export default function Stories() {
         {error && <p className="text-red-500">Failed: {String(error)}</p>}
 
         {stories && (
-          <div className="rounded-xl border border-border overflow-hidden">
+          <div className="border-[1.5px] border-[var(--steel)] overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-card/60 text-muted text-xs uppercase">
+              <thead className="bg-[var(--cream-2)] text-[var(--ink)] label text-[10px] tracking-[0.15em] uppercase border-b-[1.5px] border-[var(--steel)]">
                 <tr>
                   <th className="text-left px-3 py-2">Name</th>
                   <th className="text-left px-3 py-2">Status</th>
@@ -86,12 +86,12 @@ export default function Stories() {
                         <td className="px-3 py-2 text-muted">{s.repo ?? ''}</td>
                         <td className="px-3 py-2">
                           {live > 0 ? (
-                            <span className="inline-flex items-center gap-1 text-red-400">
-                              <span className="inline-block size-1.5 rounded-full bg-red-500 animate-pulse" />
+                            <span className="label inline-flex items-center gap-1 text-[var(--red)] text-[10px] tracking-[0.12em]">
+                              <span className="inline-block size-1.5 bg-[var(--red)] z-pulse" />
                               {live}
                             </span>
                           ) : (
-                            <span className="text-muted/50">—</span>
+                            <span className="text-[var(--muted)]">—</span>
                           )}
                         </td>
                         <td className="px-3 py-2 text-muted">

@@ -29,7 +29,7 @@ export default function StoryCard({ story, onOpen, activity }: StoryCardProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-card border border-border rounded-lg p-3 shadow-sm hover:border-accent/50 transition-colors"
+      className="bg-[var(--cream)] border-[1.5px] border-[var(--steel)] p-3 hover:border-[var(--red)] transition-colors"
     >
       {/* Drag handle — whole card except the title click */}
       <div
@@ -41,37 +41,37 @@ export default function StoryCard({ story, onOpen, activity }: StoryCardProps) {
         <div className="flex items-start gap-2">
           {active > 0 && (
             <span
-              className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-400 px-1.5 py-0.5 text-[10px] font-medium"
+              className="label inline-flex items-center gap-1 bg-[var(--red)] text-[var(--cream)] px-1.5 py-0.5 text-[9.5px] tracking-[0.15em]"
               title={`${active} live session${active > 1 ? 's' : ''}`}
               aria-label="live"
             >
-              <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span aria-hidden="true" className="inline-block size-1.5 bg-[var(--cream)] z-pulse" />
               {active > 1 ? `LIVE · ${active}` : 'LIVE'}
             </span>
           )}
           <p className="font-medium text-sm leading-tight break-words">{story.name}</p>
         </div>
-        <div className="flex items-center gap-2 mt-2 text-xs text-muted">
+        <div className="flex items-center gap-2 mt-2 text-[11px] font-mono text-[var(--muted)] tracking-wide">
           {story.repo && (
-            <span className="px-1.5 py-0.5 rounded bg-border/40">{story.repo}</span>
+            <span className="px-1.5 py-0.5 bg-[var(--cream-3)] border border-[var(--rule)]">{story.repo}</span>
           )}
-          <span>updated {relative(story.updated_at)}</span>
+          <span>upd {relative(story.updated_at)}</span>
         </div>
       </div>
       <div className="mt-2 flex items-center gap-3">
         <button
           type="button"
           onClick={onOpen}
-          className="text-xs text-accent hover:underline"
+          className="label text-[10px] tracking-[0.12em] text-[var(--ink)] hover:text-[var(--red)] uppercase"
         >
-          Open
+          Open ▸
         </button>
         {firstSession && (
           <Link
             to={`/room/${firstSession}`}
-            className="text-xs text-red-400 hover:underline"
+            className="label text-[10px] tracking-[0.12em] text-[var(--red)] hover:text-[var(--red-ink)] uppercase"
           >
-            Watch live →
+            Watch live ▸
           </Link>
         )}
       </div>

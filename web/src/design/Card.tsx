@@ -15,10 +15,10 @@ export function Card({
     <div
       onClick={onClick}
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--hv-border)',
-        borderRadius: 'var(--radius)',
-        boxShadow: 'var(--shadow-sm)',
+        background: 'var(--cream)',
+        border: '1.5px solid var(--steel)',
+        borderRadius: 0,
+        boxShadow: 'none',
         cursor: onClick ? 'pointer' : undefined,
         ...style,
       }}

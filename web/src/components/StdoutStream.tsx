@@ -37,10 +37,10 @@ export default function StdoutStream({ entries, showRole = true }: StdoutStreamP
     <div className="relative flex-1 min-h-0">
       <div
         ref={containerRef}
-        className="absolute inset-0 overflow-y-auto font-mono text-[12px] leading-5 p-4 bg-black/20 rounded-lg border border-border"
+        className="absolute inset-0 overflow-y-auto font-mono text-[12px] leading-5 p-4 bg-[var(--steel-2)] text-[var(--cream)] border-[1.5px] border-[var(--steel)]"
       >
         {entries.length === 0 ? (
-          <p className="text-muted text-xs italic">waiting for frames…</p>
+          <p className="label text-[10px] tracking-[0.15em] text-[var(--cream-3)]">— AWAITING FRAMES —</p>
         ) : (
           entries.map((e) => renderEntry(e, showRole))
         )}
@@ -48,14 +48,14 @@ export default function StdoutStream({ entries, showRole = true }: StdoutStreamP
       {!pinned && (
         <button
           type="button"
-          className="absolute bottom-3 right-3 rounded-full bg-card border border-border px-3 py-1 text-[11px] text-muted hover:text-fg shadow"
+          className="label absolute bottom-3 right-3 bg-[var(--red)] text-[var(--cream)] border-[1.5px] border-[var(--steel)] px-3 py-1 text-[10px] tracking-[0.12em] uppercase hover:bg-[var(--red-ink)]"
           onClick={() => {
             const el = containerRef.current
             if (el) el.scrollTop = el.scrollHeight
             setPinned(true)
           }}
         >
-          Paused — jump to latest
+          Paused · Resume
         </button>
       )}
     </div>
@@ -96,15 +96,15 @@ function renderEntry(e: RoomEntry, showRole: boolean): React.ReactNode {
 function roleColor(role: string): string {
   switch (role) {
     case 'user':
-      return 'text-cyan-400'
+      return 'text-[var(--cyan-2)]'
     case 'assistant':
-      return 'text-fg'
+      return 'text-[var(--cream)]'
     case 'tool_use':
-      return 'text-yellow-400'
+      return 'text-[var(--warn)]'
     case 'tool_result':
-      return 'text-emerald-400'
+      return 'text-[var(--ok)]'
     default:
-      return 'text-muted'
+      return 'text-[var(--cream-3)]'
   }
 }
 

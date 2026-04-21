@@ -113,16 +113,39 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 560,
-          background: 'var(--surface)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-lg)',
-          border: '1px solid var(--hv-border)',
+          width: 580,
+          background: 'var(--cream)',
+          borderRadius: 0,
+          boxShadow: '3px 3px 0 var(--steel)',
+          border: '2px solid var(--steel)',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
-          <Icon name="search" size={15} color="var(--fg-3)" />
+        <span className="rivet rivet-xs" style={{ position: 'absolute', top: 4, left: 4 }} />
+        <span className="rivet rivet-xs" style={{ position: 'absolute', top: 4, right: 4 }} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 14px',
+            background: 'var(--cream-2)',
+            borderBottom: '1.5px solid var(--steel)',
+          }}
+        >
+          <span
+            className="label"
+            style={{
+              font: '700 11px/1 var(--font-label)',
+              letterSpacing: '0.15em',
+              color: 'var(--ink)',
+            }}
+          >
+            JUMP · FIND
+          </span>
+          <div style={{ flex: 1 }} />
+          <Icon name="search" size={14} color="var(--steel)" />
           <input
             ref={inputRef}
             value={q}
@@ -130,25 +153,40 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               setQ(e.target.value)
               setCursor(0)
             }}
-            placeholder="Jump to screen or search stories…"
+            placeholder="Screen or story…"
+            className="mono"
             style={{
-              flex: 1,
-              background: 'transparent',
-              border: 'none',
+              flex: 2,
+              background: 'var(--cream)',
+              border: '1.5px solid var(--steel)',
               outline: 'none',
-              font: '400 14px/1 var(--font)',
+              padding: '4px 8px',
+              font: '500 12px/1 var(--mono)',
+              letterSpacing: '0.04em',
+              color: 'var(--ink)',
             }}
           />
         </div>
+        <div className="tick-stripe" />
         <div
           style={{
-            borderTop: '1px solid var(--hv-border)',
-            maxHeight: 360,
+            maxHeight: 380,
             overflow: 'auto',
           }}
         >
           {hits.length === 0 && (
-            <div style={{ padding: 18, color: 'var(--fg-3)' }}>No results</div>
+            <div
+              className="mono"
+              style={{
+                padding: 18,
+                color: 'var(--muted)',
+                font: '500 11px/1 var(--mono)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              — NO MATCHES —
+            </div>
           )}
           {hits.map((h, i) => {
             const active = i === cursor
@@ -163,33 +201,45 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 }}
                 style={{
                   width: '100%',
-                  padding: '9px 14px',
-                  background: active ? 'var(--bg-2)' : 'transparent',
+                  padding: '8px 14px',
+                  background: active ? 'var(--cream-3)' : 'transparent',
                   border: 'none',
+                  borderBottom: '1px solid var(--rule)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
                   cursor: 'pointer',
                   textAlign: 'left',
-                  font: '400 13px/1 var(--font)',
+                  font: '500 12.5px/1 var(--mono)',
                 }}
               >
                 {h.kind === 'screen' ? (
                   <span
+                    className="label"
                     style={{
-                      font: '400 10.5px/1 var(--mono)',
-                      color: 'var(--fg-3)',
+                      font: '700 9.5px/1 var(--font-label)',
+                      color: 'var(--cream)',
+                      background: 'var(--steel)',
                       padding: '2px 6px',
-                      background: 'var(--bg-2)',
-                      borderRadius: 10,
+                      letterSpacing: '0.15em',
                     }}
                   >
-                    screen
+                    SCREEN
                   </span>
                 ) : (
                   <StoryId id={h.id} />
                 )}
-                <span style={{ flex: 1, color: 'var(--hv-fg)' }}>{h.label}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    color: 'var(--ink)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {h.label}
+                </span>
                 {h.kind === 'story' && h.status && (
                   <StatusPill status={h.status as import('../types').StoryStatus} dense />
                 )}

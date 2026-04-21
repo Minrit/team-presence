@@ -289,10 +289,10 @@ const linkBtn: React.CSSProperties = {
 
 function priorityColor(p: PriorityLevel): string {
   return (
-    p === 'P0' ? '#b91c1c'
-      : p === 'P1' ? '#ef4444'
-      : p === 'P2' ? '#f59e0b'
-      : p === 'P3' ? '#71717a'
-      : '#a1a1aa'
+    p === 'P0' ? 'var(--red-ink)'
+      : p === 'P1' ? 'var(--red)'
+      : p === 'P2' ? 'var(--iron)'
+      : p === 'P3' ? 'var(--steel)'
+      : 'var(--muted)'
   )
 }

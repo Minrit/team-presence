@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth'
 import { ApiError } from '../api'
 import { Button } from '../design/Button'
+import { ZiraLogo } from '../design/ZiraLogo'
 
 export default function Login() {
   const { user, loading, signIn } = useAuth()
@@ -33,93 +34,197 @@ export default function Login() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          marginBottom: 14,
+          gap: 12,
+          padding: '18px 20px 14px',
+          borderBottom: '1.5px solid var(--steel)',
+          background: 'var(--cream-2)',
         }}
       >
-        <img
-          src="/zira-64.png"
-          alt=""
-          width={28}
-          height={28}
-          style={{ display: 'block' }}
-        />
-        <div style={{ font: '700 15px/1 var(--font)', letterSpacing: 1.4 }}>
-          ZIRA
+        <ZiraLogo size={38} />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span
+            className="display"
+            style={{
+              font: '900 22px/1 var(--font-display)',
+              letterSpacing: '0.02em',
+              color: 'var(--ink)',
+            }}
+          >
+            ZIRA
+          </span>
+          <span
+            className="mono"
+            style={{
+              font: '500 9.5px/1 var(--mono)',
+              color: 'var(--muted)',
+              letterSpacing: '0.15em',
+              marginTop: 3,
+              textTransform: 'uppercase',
+            }}
+          >
+            SER. 001 · Project tracker
+          </span>
         </div>
       </div>
-      <h1 style={{ font: '600 22px/1.2 var(--font)', marginBottom: 2 }}>Sign in</h1>
-      <p style={{ font: '400 13px/1.4 var(--font)', color: 'var(--fg-3)', marginBottom: 18 }}>
-        Project tracker
-      </p>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Field label="Email">
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input"
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input"
-          />
-        </Field>
-        {err && (
-          <p style={{ font: '400 12.5px/1.4 var(--font)', color: 'var(--danger)' }}>{err}</p>
-        )}
-        <Button type="submit" disabled={busy} size="lg" style={{ width: '100%' }}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </Button>
-      </form>
-      <p
-        style={{
-          marginTop: 18,
-          font: '400 13px/1.4 var(--font)',
-          color: 'var(--fg-3)',
-        }}
-      >
-        First person on the team?{' '}
-        <Link to="/register" style={{ color: 'var(--hv-accent)' }}>
-          Bootstrap
-        </Link>
-      </p>
+
+      <div className="tick-strip" style={{ height: 10 }} />
+
+      <div style={{ padding: '22px 22px 22px' }}>
+        <h1
+          className="display"
+          style={{
+            font: '800 20px/1 var(--font-display)',
+            margin: '0 0 4px',
+            letterSpacing: '0.02em',
+            color: 'var(--ink)',
+            textTransform: 'uppercase',
+          }}
+        >
+          Sign in · Operator
+        </h1>
+        <p
+          className="mono"
+          style={{
+            font: '500 10.5px/1 var(--mono)',
+            color: 'var(--muted)',
+            marginBottom: 20,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Authorized personnel only
+        </p>
+
+        <form
+          onSubmit={submit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+        >
+          <Field label="Email">
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mono"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Password">
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mono"
+              style={inputStyle}
+            />
+          </Field>
+          {err && (
+            <p
+              className="label"
+              style={{
+                font: '700 10.5px/1.3 var(--font-label)',
+                color: 'var(--cream)',
+                background: 'var(--iron)',
+                padding: '6px 10px',
+                border: '1.5px solid var(--steel)',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                margin: 0,
+              }}
+            >
+              ERR · {err}
+            </p>
+          )}
+          <Button type="submit" disabled={busy} size="lg" style={{ width: '100%' }}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
+
+        <div
+          style={{
+            marginTop: 20,
+            paddingTop: 14,
+            borderTop: '1px dashed var(--rule)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span
+            className="mono"
+            style={{
+              font: '500 10.5px/1 var(--mono)',
+              color: 'var(--muted)',
+              letterSpacing: '0.05em',
+            }}
+          >
+            First on the team?
+          </span>
+          <Link
+            to="/register"
+            className="label"
+            style={{
+              font: '700 10.5px/1 var(--font-label)',
+              color: 'var(--red)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              borderBottom: '1.5px solid var(--red)',
+              paddingBottom: 2,
+            }}
+          >
+            Bootstrap ▸
+          </Link>
+        </div>
+      </div>
     </AuthShell>
   )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  background: 'var(--cream)',
+  border: '1.5px solid var(--steel)',
+  borderRadius: 0,
+  font: '500 13px/1.2 var(--mono)',
+  color: 'var(--ink)',
+  letterSpacing: '0.02em',
+  outline: 'none',
 }
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div
+      className="paper-tex"
       style={{
         minHeight: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
-        background: 'var(--hv-bg)',
+        background: 'var(--cream)',
       }}
     >
       <div
         style={{
           width: '100%',
-          maxWidth: 380,
-          background: 'var(--surface)',
-          border: '1px solid var(--hv-border)',
-          borderRadius: 'var(--radius-lg)',
-          padding: 24,
-          boxShadow: 'var(--shadow-sm)',
+          maxWidth: 420,
+          background: 'var(--cream)',
+          border: '2px solid var(--steel)',
+          boxShadow: '3px 3px 0 var(--steel)',
+          position: 'relative',
         }}
       >
+        {/* corner rivets */}
+        <span className="rivet rivet-xs" style={{ position: 'absolute', top: 4, left: 4 }} />
+        <span className="rivet rivet-xs" style={{ position: 'absolute', top: 4, right: 4 }} />
+        <span className="rivet rivet-xs" style={{ position: 'absolute', bottom: 4, left: 4 }} />
+        <span className="rivet rivet-xs" style={{ position: 'absolute', bottom: 4, right: 4 }} />
         {children}
       </div>
     </div>
@@ -130,16 +235,17 @@ export function Field({ label, children }: { label: string; children: React.Reac
   return (
     <label style={{ display: 'block' }}>
       <span
+        className="label"
         style={{
           display: 'block',
-          font: '500 11.5px/1 var(--font)',
-          color: 'var(--fg-3)',
+          font: '700 10px/1 var(--font-label)',
+          color: 'var(--ink)',
           marginBottom: 6,
           textTransform: 'uppercase',
-          letterSpacing: 0.3,
+          letterSpacing: '0.18em',
         }}
       >
-        {label}
+        · {label}
       </span>
       {children}
     </label>

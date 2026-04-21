@@ -95,18 +95,18 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
-        <header className="flex items-center justify-between p-4 border-b border-border">
-          <span className="text-xs text-muted">
-            {saving ? 'Saving…' : `Updated ${data ? new Date(data.updated_at).toLocaleString() : ''}`}
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--cream)] border-[2px] border-[var(--steel)] shadow-[3px_3px_0_var(--steel)]">
+        <header className="flex items-center justify-between p-4 border-b-[1.5px] border-[var(--steel)] bg-[var(--cream-2)]">
+          <span className="mono text-[10px] text-[var(--muted)] uppercase tracking-wider">
+            {saving ? 'SAVING…' : `UPD ${data ? new Date(data.updated_at).toLocaleString() : ''}`}
           </span>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={copyAsMd}
-              className="text-xs rounded bg-border/40 hover:bg-border/60 px-2 py-1"
+              className="label text-[10px] tracking-[0.12em] uppercase bg-[var(--cream-3)] border-[1.5px] border-[var(--steel)] hover:bg-[var(--cream-2)] px-2 py-1"
             >
-              {copied ? 'copied!' : 'copy as markdown'}
+              {copied ? 'COPIED' : 'COPY MD'}
             </button>
             <button
               type="button"
@@ -119,8 +119,8 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
           </div>
         </header>
 
-        {isLoading && <div className="p-8 text-center text-muted">Loading…</div>}
-        {error && <div className="p-8 text-center text-red-500">{String(error)}</div>}
+        {isLoading && <div className="label p-8 text-center text-[var(--muted)] tracking-[0.15em] uppercase text-[11px]">— Loading —</div>}
+        {error && <div className="p-8 text-center text-[var(--red)]">{String(error)}</div>}
 
         {data && (
           <div className="p-4 space-y-5">
@@ -227,7 +227,7 @@ export default function StoryDetailDialog({ storyId, onClose }: StoryDetailDialo
                 <ul className="space-y-1">
                   {linkedSessions.map((sid) => (
                     <li key={sid} className="text-xs flex items-center gap-2">
-                      <span className="inline-block size-1.5 rounded-full bg-red-500 animate-pulse" />
+                      <span className="inline-block size-1.5 bg-[var(--red)] z-pulse" />
                       <span className="font-mono">{sid.slice(0, 8)}</span>
                       <Link
                         to={`/room/${sid}`}

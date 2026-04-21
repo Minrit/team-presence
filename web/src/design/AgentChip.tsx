@@ -12,28 +12,40 @@ export function AgentChip({
   if (!meta) return null
   const sz =
     size === 'sm'
-      ? { p: '3px 7px 3px 6px', fs: 11.5, dot: 7 }
-      : { p: '4px 9px 4px 7px', fs: 12.5, dot: 8 }
+      ? { p: '2px 6px', fs: 9.5, dot: 3 }
+      : { p: '3px 7px', fs: 10, dot: 3 }
   return (
     <span
+      className="label"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
         gap: 5,
         padding: sz.p,
-        background: 'var(--surface)',
-        border: '1px solid var(--hv-border)',
-        borderRadius: 'var(--radius-sm)',
-        font: `500 ${sz.fs}px/1 var(--font)`,
-        color: 'var(--fg-2)',
+        background: 'var(--steel)',
+        color: 'var(--cream)',
+        border: '1.5px solid var(--steel-2)',
+        borderRadius: 0,
+        font: `700 ${sz.fs}px/1 var(--font-label)`,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
       }}
     >
+      <span
+        className="mono"
+        style={{
+          color: meta.color,
+          font: '500 9px/1 var(--mono)',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {meta.code}
+      </span>
       <span
         style={{
           width: sz.dot,
           height: sz.dot,
-          borderRadius: 2,
-          background: meta.color,
+          background: 'var(--cream-3)',
         }}
       />
       {meta.short}

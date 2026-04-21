@@ -3,16 +3,17 @@ import type { ReactNode } from 'react'
 export function Kbd({ children }: { children: ReactNode }) {
   return (
     <kbd
+      className="mono"
       style={{
         display: 'inline-block',
         padding: '1px 5px',
-        minWidth: 18,
+        minWidth: 16,
         textAlign: 'center',
-        background: 'var(--bg-2)',
-        border: '1px solid var(--hv-border)',
-        borderRadius: 4,
-        font: '500 11px/15px var(--mono)',
-        color: 'var(--fg-3)',
+        background: 'var(--cream-3)',
+        border: '1.5px solid var(--steel)',
+        borderRadius: 0,
+        font: '600 10px/15px var(--mono)',
+        color: 'var(--ink)',
       }}
     >
       {children}

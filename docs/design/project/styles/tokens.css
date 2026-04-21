@@ -1,0 +1,271 @@
+/*
+ * ZStack Design System — Core Tokens
+ * Colors + Typography + Spacing + Radius + Shadows
+ * Derived from design/theme.css + tailwind.css (Figma tokens.json)
+ */
+
+:root {
+  /* ============================================
+   * BRAND — theme-* (default blue, runtime-swappable)
+   * ============================================ */
+  --theme-50:  #ecf5ff;
+  --theme-100: #ceefff;
+  --theme-200: #98d7fe;
+  --theme-300: #65bbfc;
+  --theme-400: #3ea1fa;
+  --theme-500: #0076f7;
+  --theme-600: #005bd4;  /* primary action */
+  --theme-700: #0043b1;  /* hover */
+  --theme-800: #052e82;  /* active */
+  --theme-900: #041e63;
+  --theme-950: #031548;
+
+  /* ============================================
+   * NEUTRALS — backgrounds, text, borders
+   * ============================================ */
+  --neutral-0:   #ffffff;  /* page/card bg */
+  --neutral-50:  #fafbfd;
+  --neutral-100: #f5f7fa;  /* subtle bg */
+  --neutral-200: #ebedf0;  /* subtle bg / divider */
+  --neutral-300: #dbdde0;  /* default border */
+  --neutral-400: #c7c9cc;  /* input border */
+  --neutral-500: #9b9da0;  /* placeholder, secondary text */
+  --neutral-600: #6f7174;  /* muted-foreground */
+  --neutral-700: #494b4e;  /* body text */
+  --neutral-800: #191b1e;  /* headings */
+  --neutral-900: #131517;
+  --neutral-950: #0d0e11;
+
+  /* ============================================
+   * STATUS — each has 50→950
+   * ============================================ */
+  /* Danger (red) */
+  --danger-50:  #fff2ea; --danger-100: #ffe4d8; --danger-200: #ffc3b2;
+  --danger-300: #ff9b8b; --danger-400: #ff766f; --danger-500: #f4454c;
+  --danger-600: #db2e43; --danger-700: #b71f40; --danger-800: #991039;
+  --danger-900: #6d0a31; --danger-950: #4c0527;
+
+  /* Positive (green) */
+  --positive-50:  #ecfedf; --positive-100: #dffcc6; --positive-200: #c9f7ae;
+  --positive-300: #aef193; --positive-400: #8ae173; --positive-500: #5aca49;
+  --positive-600: #3faf38; --positive-700: #249627; --positive-800: #107219;
+  --positive-900: #0a5017; --positive-950: #053310;
+
+  /* Alert (orange) */
+  --alert-50:  #fff1e2; --alert-100: #fff1cc; --alert-200: #ffe199;
+  --alert-300: #ffca66; --alert-400: #ffb53f; --alert-500: #ff9000;
+  --alert-600: #db7200; --alert-700: #b75701; --alert-800: #8f3e00;
+  --alert-900: #6c2a00; --alert-950: #3a1200;
+
+  /* Info (blue) */
+  --info-50:  #ecf5ff; --info-100: #ceefff; --info-200: #98d7fe;
+  --info-300: #65bbfc; --info-400: #3ea1fa; --info-500: #0076f7;
+  --info-600: #005bd4; --info-700: #0043b1; --info-800: #052e82;
+  --info-900: #041e63; --info-950: #031548;
+
+  /* Pending (purple) */
+  --pending-50:  #f0ecfd; --pending-100: #f4dafd; --pending-200: #e6b5fc;
+  --pending-300: #d18ff6; --pending-400: #bb71ee; --pending-500: #9a45e4;
+  --pending-600: #7a35c3; --pending-700: #5a22a4; --pending-800: #3c1481;
+  --pending-900: #2e0f6f; --pending-950: #150442;
+
+  /* ============================================
+   * DECORATIVE — for tags / charts only
+   * ============================================ */
+  --teal-500:   #00c782;  --teal-100: #cdfcd9;
+  --cyan-500:   #01c8e6;  --cyan-100: #ccfdf4;
+  --lime-500:   #a9c608;  --lime-100: #f3fcb0;
+  --rose-500:   #ed3f8e;  --rose-100: #ffdbdc;
+  --violet-500: #6a63ff;  --violet-100: #e0dcff;
+
+  /* ============================================
+   * SEMANTIC — foreground / background roles
+   * ============================================ */
+  --bg:              var(--neutral-0);
+  --bg-subtle:       var(--neutral-100);
+  --bg-muted:        var(--neutral-200);
+  --card:            var(--neutral-0);
+  --popover:         var(--neutral-0);
+
+  --fg:              var(--neutral-700);   /* body */
+  --fg-strong:       var(--neutral-800);   /* headings */
+  --fg-muted:        var(--neutral-500);
+  --fg-subtle:       var(--neutral-600);
+  --fg-on-brand:     #ffffff;
+
+  --border:          var(--neutral-300);
+  --border-subtle:   var(--neutral-200);
+  --input-border:    var(--neutral-400);
+
+  --primary:         var(--theme-600);
+  --primary-hover:   var(--theme-700);
+  --primary-active:  var(--theme-800);
+  --ring:            var(--theme-300);
+  --focus-ring:      0 0 0 2px var(--theme-50);
+
+  --overlay:         rgba(0, 0, 0, 0.5);
+
+  /* ============================================
+   * SPACING — 4px grid
+   * ============================================ */
+  --space-0:   0px;
+  --space-px:  1px;
+  --space-0_5: 2px;
+  --space-1:   4px;
+  --space-1_5: 6px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-7:   28px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+
+  /* ============================================
+   * RADIUS
+   * ============================================ */
+  --radius-xs:   2px;   /* default — buttons, inputs, cards */
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-full: 9999px;
+
+  /* ============================================
+   * SHADOWS — understated, almost flat
+   * ============================================ */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* ============================================
+   * TYPOGRAPHY — system sans-serif stack
+   * ============================================ */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+               Ubuntu, "Fira Sans", "Droid Sans", "PingFang SC", Helvetica,
+               Arial, sans-serif;
+  --font-mono: "SFMono-Medium", "SF Mono", "Segoe UI Mono", "Roboto Mono",
+               "Ubuntu Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --text-xs:   12px;  /* captions, helper only */
+  --text-sm:   14px;  /* DEFAULT body, labels, tables */
+  --text-base: 16px;  /* section titles */
+  --text-lg:   20px;  /* page titles */
+  --text-xl:   24px;  /* large headings */
+  --text-2xl:  30px;
+  --text-3xl:  38px;
+
+  --leading-tight:   20px;
+  --leading-snug:    22px;
+  --leading-normal:  24px;
+  --leading-relaxed: 28px;
+  --leading-loose:   32px;
+
+  --weight-normal:   400;
+  --weight-medium:   500;  /* labels */
+  --weight-semibold: 600;  /* headings */
+
+  /* Control heights (density) */
+  --h-sm:     28px;
+  --h-default:32px;  /* default control height */
+  --h-lg:     40px;
+}
+
+/* ============================================
+ * DARK MODE — apply .dark to <html>
+ * ============================================ */
+.dark {
+  --neutral-0:   #0b0c10;
+  --neutral-50:  #0b0c10;
+  --neutral-100: #17191f;
+  --neutral-200: #262930;
+  --neutral-300: #3e424b;
+  --neutral-400: #5f636d;
+  --neutral-500: #8a8e98;
+  --neutral-600: #b3b7c0;
+  --neutral-700: #d1d4db;
+  --neutral-800: #e1e4ea;
+  --neutral-900: #eceff5;
+  --neutral-950: #f2f5fa;
+
+  --bg:              #0b0c10;
+  --bg-subtle:       #17191f;
+  --bg-muted:        #262930;
+  --card:            #17191f;
+  --popover:         #17191f;
+
+  --fg:              #d1d4db;
+  --fg-strong:       #e1e4ea;
+  --fg-muted:        #8a8e98;
+  --fg-subtle:       #b3b7c0;
+
+  --border:          #3e424b;
+  --border-subtle:   #262930;
+  --input-border:    #5f636d;
+  --overlay:         rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================
+ * BASE TYPOGRAPHY — semantic classes
+ * Usage defaults: base font-size 14px, line-height 22px.
+ * ============================================ */
+html, body {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--fg);
+  background-color: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, .h1 {
+  font-size: var(--text-xl);
+  line-height: 32px;
+  font-weight: var(--weight-semibold);
+  color: var(--fg-strong);
+  margin: 0;
+}
+h2, .h2 {
+  font-size: var(--text-lg);
+  line-height: 28px;
+  font-weight: var(--weight-semibold);
+  color: var(--fg-strong);
+  margin: 0;
+}
+h3, .h3 {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-semibold);
+  color: var(--fg-strong);
+  margin: 0;
+}
+p, .body {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--fg);
+  margin: 0;
+}
+.caption, small {
+  font-size: var(--text-xs);
+  line-height: 16px;
+  color: var(--fg-muted);
+}
+.label {
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  font-weight: var(--weight-medium);
+  color: var(--fg-strong);
+}
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}

@@ -39,21 +39,22 @@ export default function Grid() {
         )}
 
         {tiles.length === 0 && connected && (
-          <div className="rounded-xl border border-dashed border-border/60 p-10 text-center text-muted">
-            <p className="text-sm">No one is live.</p>
-            <p className="text-xs mt-1 text-muted/70">
-              Start your collector with{' '}
-              <code className="px-1 py-0.5 rounded bg-border/30 font-mono text-[11px]">
+          <div className="border-[1.5px] border-dashed border-[var(--steel)] p-10 text-center bg-[var(--cream-2)]">
+            <p className="label text-[12px] tracking-[0.15em] text-[var(--ink)] uppercase">— No live operators —</p>
+            <p className="text-[11px] mt-2 text-[var(--muted)] font-mono">
+              Run{' '}
+              <code className="px-1.5 py-0.5 bg-[var(--steel)] text-[var(--cream)] font-mono text-[11px]">
                 team-presence start
               </code>
+              {' '}to connect
             </p>
           </div>
         )}
 
         {visibleActive.length > 0 && (
           <section>
-            <h2 className="text-xs uppercase tracking-wide text-muted mb-3">
-              Active sessions
+            <h2 className="label text-[11px] uppercase tracking-[0.15em] text-[var(--ink)] mb-3 pb-2 border-b-[1.5px] border-[var(--steel)]">
+              Active sessions · {visibleActive.length}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {visibleActive.map((t) => (
@@ -70,8 +71,8 @@ export default function Grid() {
 
         {unassigned.length > 0 && (
           <section>
-            <h2 className="text-xs uppercase tracking-wide text-muted mb-3">
-              未分类 — sessions without a linked story
+            <h2 className="label text-[11px] uppercase tracking-[0.15em] text-[var(--ink)] mb-3 pb-2 border-b-[1.5px] border-[var(--steel)]">
+              Unassigned · {unassigned.length}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {unassigned.map((t) => (

@@ -56,12 +56,11 @@ export default function Overview() {
     { label: 'Live sessions', value: String(active) },
   ]
 
-  // Dummy burnup series: linear ramp from 0 → done over 10 days; swap to a
-  // per-day DB aggregation in Phase B.
-  const series = useMemo<number[]>(() => {
-    const points = Math.max(2, 10)
-    return Array.from({ length: points }, (_, i) => Math.round((done * (i + 1)) / points))
-  }, [done])
+  const burnup = useMemo(() => buildBurnupSeries(inSprint, current), [inSprint, current])
+  const dayLabel =
+    current && burnup.days > 0
+      ? `Day ${Math.min(burnup.todayIndex + 1, burnup.days)} / ${burnup.days}`
+      : 'No sprint window'
 
   return (
     <div
@@ -96,10 +95,38 @@ export default function Overview() {
 
       {/* Burnup */}
       <Card style={{ padding: 16 }}>
-        <div style={{ font: '600 13px/1 var(--font)', marginBottom: 10 }}>
-          {current ? `Burnup · ${current.name}` : 'Burnup (no active sprint)'}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ font: '600 13px/1 var(--font)' }}>
+            {current ? `Burnup · ${current.name}` : 'Burnup (no active sprint)'}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              color: 'var(--fg-3)',
+              font: '400 11px/1 var(--mono)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>{dayLabel}</span>
+            <span style={{ color: 'var(--hv-fg)' }}>{done} / {total} pt</span>
+          </div>
         </div>
-        <BurnupChart series={series} total={total} height={180} />
+        <BurnupChart
+          series={burnup.series}
+          total={total}
+          height={180}
+          labels={burnup.labels}
+        />
       </Card>
 
       {/* Epics progress */}
@@ -123,6 +150,74 @@ export default function Overview() {
       </Card>
     </div>
   )
+}
+
+function buildBurnupSeries(stories: Story[], sprint: Sprint | null): {
+  series: number[]
+  labels: string[]
+  days: number
+  todayIndex: number
+} {
+  if (!sprint) {
+    const done = stories
+      .filter((s) => s.status === 'done')
+      .reduce((sum, s) => sum + (s.points ?? 0), 0)
+    return { series: done > 0 ? [done] : [], labels: [], days: 0, todayIndex: 0 }
+  }
+
+  const start = parseSprintDate(sprint.start_date)
+  const end = parseSprintDate(sprint.end_date)
+  if (!start || !end || end < start) {
+    return { series: [], labels: [], days: 0, todayIndex: 0 }
+  }
+
+  const days = daysBetween(start, end) + 1
+  const today = startOfDay(new Date())
+  const todayIndex = clamp(daysBetween(start, today), 0, days - 1)
+  const series = Array.from({ length: days }, () => 0)
+
+  for (const story of stories) {
+    if (story.status !== 'done') continue
+    const finishedAt = startOfDay(new Date(story.updated_at))
+    if (Number.isNaN(finishedAt.getTime())) continue
+    const dayIndex = clamp(daysBetween(start, finishedAt), 0, days - 1)
+    series[dayIndex] += story.points ?? 0
+  }
+
+  let cumulative = 0
+  for (let i = 0; i < series.length; i += 1) {
+    cumulative += series[i]
+    series[i] = cumulative
+  }
+
+  return {
+    series,
+    labels: [formatMonthDay(start), formatMonthDay(end)],
+    days,
+    todayIndex,
+  }
+}
+
+function parseSprintDate(value: string): Date | null {
+  const [year, month, day] = value.split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function daysBetween(start: Date, end: Date): number {
+  return Math.floor((startOfDay(end).getTime() - startOfDay(start).getTime()) / 86_400_000)
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function formatMonthDay(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
 function EpicRow({ epic, stories }: { epic: Epic; stories: Story[] }) {

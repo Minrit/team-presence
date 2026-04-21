@@ -53,37 +53,51 @@ export function Terminal({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: 'var(--term-bg)',
-        borderRadius: 'var(--radius)',
+        background: 'var(--steel-2)',
+        borderRadius: 0,
         overflow: 'hidden',
-        border: '1px solid var(--term-border)',
-        boxShadow: focused
-          ? '0 0 0 1.5px var(--hv-accent), var(--shadow-md)'
-          : 'var(--shadow-sm)',
-        transition: 'box-shadow 150ms ease',
+        border: `${focused ? '2px' : '1.5px'} solid ${focused ? 'var(--red)' : 'var(--steel)'}`,
+        boxShadow: focused ? '2px 2px 0 var(--steel)' : 'none',
+        transition: 'border-color 120ms, box-shadow 120ms',
         cursor: onFocusClick ? 'pointer' : 'default',
+        position: 'relative',
       }}
     >
       {/* Header */}
       <div
         style={{
           padding: '8px 12px',
-          borderBottom: '1px solid var(--term-border)',
+          borderBottom: '1.5px solid var(--steel)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
           flexShrink: 0,
-          background: 'rgba(255,255,255,0.02)',
+          background: 'var(--steel)',
         }}
       >
         <AgentChip agentKind={header.agentKind} />
         {header.userLabel && (
-          <span style={{ color: '#d4d4d8', font: '500 12px/1 var(--font)' }}>
+          <span
+            className="label"
+            style={{
+              color: 'var(--cream)',
+              font: '700 10.5px/1 var(--font-label)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            }}
+          >
             {header.userLabel}
           </span>
         )}
         {header.storyId && (
-          <span style={{ color: '#71717a', font: '400 11px/1 var(--mono)' }}>
+          <span
+            className="mono"
+            style={{
+              color: 'var(--cream-3)',
+              font: '500 10.5px/1 var(--mono)',
+              letterSpacing: '0.05em',
+            }}
+          >
             {header.storyId}
           </span>
         )}
@@ -91,20 +105,31 @@ export function Terminal({
         {connected ? (
           <span
             title="Live"
+            className="label"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              color: '#a1a1aa',
-              font: '400 11px/1 var(--font)',
+              color: 'var(--red)',
+              font: '700 10px/1 var(--font-label)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
             }}
           >
             <LiveDot size={5} />
-            live
+            Live
           </span>
         ) : (
-          <span style={{ color: '#71717a', font: '400 11px/1 var(--font)' }}>
-            {error || 'offline'}
+          <span
+            className="label"
+            style={{
+              color: 'var(--cream-3)',
+              font: '500 10px/1 var(--font-label)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {error || 'Offline'}
           </span>
         )}
         {header.rightSlot}
@@ -114,11 +139,12 @@ export function Terminal({
       {(header.cwd || header.branch) && (
         <div
           style={{
-            padding: '6px 12px',
-            borderBottom: '1px solid var(--term-border)',
-            background: 'rgba(255,255,255,0.015)',
-            font: '400 11px/1 var(--mono)',
-            color: '#71717a',
+            padding: '5px 12px',
+            borderBottom: '1px solid var(--steel)',
+            background: 'var(--steel-3)',
+            font: '500 10.5px/1 var(--mono)',
+            color: 'var(--cream-3)',
+            letterSpacing: '0.05em',
             display: 'flex',
             alignItems: 'center',
             gap: 14,
@@ -126,13 +152,13 @@ export function Terminal({
         >
           {header.cwd && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name="box" size={11} color="#71717a" />
+              <Icon name="box" size={11} color="var(--cream-3)" />
               {shorten(header.cwd, 48)}
             </span>
           )}
           {header.branch && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name="branch" size={11} color="#71717a" />
+              <Icon name="branch" size={11} color="var(--cream-3)" />
               {header.branch}
             </span>
           )}

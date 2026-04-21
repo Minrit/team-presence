@@ -6,14 +6,14 @@ import { useEpics, useStories } from '../../stories'
 import type { Epic } from '../../types'
 
 const COLORS = [
-  '#6366f1', // indigo
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#ef4444', // red
-  '#a855f7', // violet
-  '#06b6d4', // cyan
-  '#f43f5e', // rose
-  '#71717a', // zinc
+  '#c8392b', // signal red
+  '#8a3a2a', // iron oxide
+  '#3b6d80', // blueprint cyan
+  '#2a2f3a', // cold steel
+  '#5a7a3c', // olive ok
+  '#b8801a', // brass warn
+  '#4f8296', // pale cyan
+  '#6b6358', // muted
 ]
 
 export default function EpicsTab() {

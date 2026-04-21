@@ -5,19 +5,59 @@ export type ButtonSize = 'default' | 'sm' | 'lg'
 
 const VARIANTS: Record<
   ButtonVariant,
-  { bg: string; fg: string; border: string; hover: string }
+  { bg: string; fg: string; border: string; hover: string; activeBg: string; activeFg: string; shadow: string }
 > = {
-  primary:   { bg: 'var(--hv-accent)', fg: '#fff',         border: 'transparent',    hover: 'var(--accent-hover)' },
-  secondary: { bg: 'var(--surface)',   fg: 'var(--hv-fg)', border: 'var(--hv-border)', hover: 'var(--bg-2)' },
-  ghost:     { bg: 'transparent',      fg: 'var(--fg-2)',  border: 'transparent',    hover: 'var(--bg-2)' },
-  soft:      { bg: 'var(--bg-2)',      fg: 'var(--hv-fg)', border: 'transparent',    hover: '#ebebef' },
-  danger:    { bg: 'var(--danger)',    fg: '#fff',         border: 'transparent',    hover: '#dc2626' },
+  primary: {
+    bg: 'var(--red)',
+    fg: 'var(--cream)',
+    border: 'var(--red-ink)',
+    hover: 'var(--red-ink)',
+    activeBg: 'var(--steel)',
+    activeFg: 'var(--cream)',
+    shadow: '2px 2px 0 var(--steel)',
+  },
+  secondary: {
+    bg: 'var(--cream-2)',
+    fg: 'var(--ink)',
+    border: 'var(--steel)',
+    hover: 'var(--cream-3)',
+    activeBg: 'var(--steel)',
+    activeFg: 'var(--cream)',
+    shadow: 'none',
+  },
+  ghost: {
+    bg: 'transparent',
+    fg: 'var(--ink)',
+    border: 'transparent',
+    hover: 'var(--cream-2)',
+    activeBg: 'var(--cream-3)',
+    activeFg: 'var(--ink)',
+    shadow: 'none',
+  },
+  soft: {
+    bg: 'var(--cream-2)',
+    fg: 'var(--fg-2)',
+    border: 'var(--rule)',
+    hover: 'var(--cream-3)',
+    activeBg: 'var(--steel)',
+    activeFg: 'var(--cream)',
+    shadow: 'none',
+  },
+  danger: {
+    bg: 'var(--iron)',
+    fg: 'var(--cream)',
+    border: 'var(--steel)',
+    hover: 'var(--red-ink)',
+    activeBg: 'var(--steel)',
+    activeFg: 'var(--cream)',
+    shadow: '2px 2px 0 var(--steel)',
+  },
 }
 
 const SIZES: Record<ButtonSize, { h: number; px: number; fs: number }> = {
-  default: { h: 30, px: 12, fs: 13 },
-  sm:      { h: 26, px: 10, fs: 12.5 },
-  lg:      { h: 36, px: 16, fs: 14 },
+  default: { h: 30, px: 14, fs: 11 },
+  sm:      { h: 24, px: 10, fs: 10 },
+  lg:      { h: 36, px: 18, fs: 12 },
 }
 
 export function Button({
@@ -56,14 +96,17 @@ export function Button({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       title={title}
+      className="label"
       style={{
         height: s.h,
         padding: `0 ${s.px}px`,
-        background: active ? 'var(--bg-2)' : hover ? v.hover : v.bg,
-        color: v.fg,
-        border: `1px solid ${v.border}`,
-        borderRadius: 'var(--radius-sm)',
-        font: `500 ${s.fs}px/1 var(--font)`,
+        background: active ? v.activeBg : hover ? v.hover : v.bg,
+        color: active ? v.activeFg : v.fg,
+        border: `1.5px solid ${v.border === 'transparent' ? 'transparent' : v.border}`,
+        borderRadius: 0,
+        font: `700 ${s.fs}px/1 var(--font-label)`,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         display: 'inline-flex',
@@ -71,11 +114,8 @@ export function Button({
         justifyContent: 'center',
         gap: 6,
         whiteSpace: 'nowrap',
-        transition: 'background 120ms ease',
-        boxShadow:
-          variant === 'primary'
-            ? '0 1px 2px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.1)'
-            : 'var(--shadow-sm)',
+        transition: 'background 80ms',
+        boxShadow: active ? 'none' : v.shadow,
         ...style,
       }}
     >

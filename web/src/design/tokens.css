@@ -1,70 +1,131 @@
-/* Hive design tokens — ported from /tmp/hive-design/nb/project/Hive.html.
-   Light mode only for MVP; `.dark` scope reserved for a Phase B toggle.
-   Legacy `--bg / --fg / --muted / --card / --border / --accent` RGB
-   triplets are kept so the pre-Hive Tailwind aliases (bg-bg, text-fg…)
-   continue to resolve until Unit 26 retires them. */
+/* ZIRA · СЕР. 001 — Soviet constructivist industrial tokens.
+   Source: Anthropic Claude Design handoff (Zira.html + ZiraUI.jsx).
+   Migrated from the Hive/Linear token set on 2026-04-19.
+   Legacy `--hv-*` names are kept (remapped to the new palette) so
+   existing call sites continue to resolve until retired. */
 
 :root {
-  /* --- Hive design tokens (hex) --- */
-  --hv-bg: #fbfbfc;
-  --hv-bg-2: #f5f5f7;
-  --hv-surface: #ffffff;
+  /* === ZIRA core palette === */
+  --red:     #c8392b;
+  --red-ink: #a82e22;
+  --iron:    #8a3a2a;
 
-  --hv-border: #ececef;
-  --hv-border-2: #e1e1e5;
+  /* v2 — surfaces toned to near-white bone; red/steel used as accents only */
+  --cream:   #f6f4ee;       /* primary surface — near-white bone */
+  --cream-2: #ecebe4;       /* secondary surface — panel heads, hover */
+  --cream-3: #dcdbd2;       /* tertiary — chips, progress troughs */
+  --paper:   #f1efe8;       /* inset panels */
 
-  --hv-fg: #18181b;
-  --hv-fg-2: #52525b;
-  --hv-fg-3: #71717a;
-  --hv-fg-4: #a1a1aa;
+  --steel:   #2a2f3a;
+  --steel-2: #1c2029;
+  --steel-3: #3a4050;
 
-  --hv-accent: #6366f1;
-  --hv-accent-hover: #4f46e5;
+  --cyan:    #3b6d80;
+  --cyan-2:  #4f8296;
 
-  --hv-success: #10b981;
-  --hv-warning: #f59e0b;
-  --hv-danger: #ef4444;
-  --hv-purple: #a855f7;
+  --ink:     #1a1612;
+  --muted:   #6a6560;
+  --rule:    #c3c1b8;       /* v2 lighter, cooler rule */
 
-  --hv-term-bg: #0b0b0f;
-  --hv-term-fg: #d4d4d8;
-  --hv-term-border: #1f1f23;
+  --ok:      #5a7a3c;
+  --warn:    #b8801a;
 
-  /* --- Shared references used across every component (design + legacy) --- */
-  --bg-2: var(--hv-bg-2);
-  --surface: var(--hv-surface);
-  --border-2: var(--hv-border-2);
-  --fg-2: var(--hv-fg-2);
-  --fg-3: var(--hv-fg-3);
-  --fg-4: var(--hv-fg-4);
-  --accent-hover: var(--hv-accent-hover);
-  --success: var(--hv-success);
-  --warning: var(--hv-warning);
-  --danger: var(--hv-danger);
-  --purple: var(--hv-purple);
-  --term-bg: var(--hv-term-bg);
-  --term-fg: var(--hv-term-fg);
-  --term-border: var(--hv-term-border);
+  /* === Semantic roles === */
+  --bg:            var(--cream);
+  --bg-2:          var(--cream-2);
+  --surface:       var(--cream);
+  --panel:         var(--paper);
+  --fg:            var(--ink);
+  --fg-2:          #3a3228;
+  --fg-3:          var(--muted);
+  --fg-4:          var(--rule);
 
-  --radius: 8px;
-  --radius-sm: 6px;
-  --radius-lg: 12px;
+  --border:        var(--steel);
+  --border-2:      var(--rule);
+  --accent:        var(--red);
+  --accent-hover:  var(--red-ink);
+  --success:       var(--ok);
+  --warning:       var(--warn);
+  --danger:        var(--red);
+  --purple:        var(--cyan);
 
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow:    0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 20px 40px -10px rgba(16, 24, 40, 0.15);
+  --term-bg:       var(--steel-2);
+  --term-fg:       var(--cream);
+  --term-border:   var(--steel);
 
-  --font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono: 'Geist Mono', 'SF Mono', ui-monospace, monospace;
+  /* === Legacy --hv-* aliases (remapped to ZIRA palette) === */
+  --hv-bg:          var(--cream);
+  --hv-bg-2:        var(--cream-2);
+  --hv-surface:     var(--cream);
+  --hv-border:      var(--steel);
+  --hv-border-2:    var(--rule);
+  --hv-fg:          var(--ink);
+  --hv-fg-2:        var(--fg-2);
+  --hv-fg-3:        var(--fg-3);
+  --hv-fg-4:        var(--fg-4);
+  --hv-accent:      var(--red);
+  --hv-accent-hover:var(--red-ink);
+  --hv-success:     var(--ok);
+  --hv-warning:     var(--warn);
+  --hv-danger:      var(--red);
+  --hv-purple:      var(--cyan);
+  --hv-term-bg:     var(--steel-2);
+  --hv-term-fg:     var(--cream);
+  --hv-term-border: var(--steel);
 
-  /* --- Legacy RGB triplets — consumed by Tailwind `rgb(var(--bg) / <alpha>)` --- */
-  --bg: 251 251 252;        /* matches #fbfbfc */
-  --fg: 24 24 27;           /* matches #18181b */
-  --muted: 113 113 122;     /* matches #71717a */
-  --card: 255 255 255;      /* matches #ffffff */
-  --border: 236 236 239;    /* matches #ececef */
-  --accent: 99 102 241;     /* matches #6366f1 */
+  /* === Radius — ZIRA is square. === */
+  --radius:    0px;
+  --radius-sm: 0px;
+  --radius-lg: 0px;
+
+  /* === Shadows — flat, steel offsets only. === */
+  --shadow-sm: none;
+  --shadow:    none;
+  --shadow-md: 2px 2px 0 var(--steel);
+  --shadow-lg: 3px 3px 0 var(--steel);
+
+  /* === Typography === */
+  --font:         "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Archivo", "Archivo Black", system-ui, sans-serif;
+  --font-label:   "Oswald", "Archivo", system-ui, sans-serif;
+  --mono:         "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  /* === Legacy Tailwind RGB triplets (re-mapped to v2 ZIRA) === */
+  --bg-rgb:     246 244 238;  /* cream */
+  --fg-rgb:      26  22  18;  /* ink */
+  --muted-rgb:  106 101  96;  /* muted */
+  --card-rgb:   241 239 232;  /* paper */
+  --border-rgb: 195 193 184;  /* rule (not steel — lighter dividers) */
+  --accent-rgb: 200  57  43;  /* red */
+
+  /* kept for Tailwind `rgb(var(--bg) / <alpha>)` aliases */
+  --bg-legacy:     var(--bg-rgb);
+  --fg-legacy:     var(--fg-rgb);
+  --muted-legacy:  var(--muted-rgb);
+  --card-legacy:   var(--card-rgb);
+  --border-legacy: var(--border-rgb);
+  --accent-legacy: var(--accent-rgb);
+}
+
+/* Tailwind's rgb(var(--bg) / <alpha>) aliases expect the space-separated
+   triplet to sit directly on --bg / --fg / etc. Override to the legacy
+   forms so bg-bg / text-fg keep resolving. */
+:root {
+  --bg:     246 244 238;
+  --fg:      26  22  18;
+  --muted:  106 101  96;
+  --card:   241 239 232;
+  --border: 195 193 184;
+  --accent: 200  57  43;
+}
+
+/* Re-declare semantic roles using the color vars (the RGB overrides above
+   clobbered --bg etc. for the Tailwind bridge; we need named color
+   aliases again for component inline styles). */
+:root {
+  --bg-color:       #e8dfc6;
+  --surface-color:  #e8dfc6;
+  --panel-color:    #f3ecd8;
 }
 
 html,
@@ -72,12 +133,20 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: var(--hv-bg);
-  color: var(--hv-fg);
+  background: var(--cream);
+  color: var(--ink);
   font-family: var(--font);
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #eeece4;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(0, 0, 0, 0.012) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(0, 0, 0, 0.015) 0, transparent 40%);
 }
 
 #root {
@@ -92,9 +161,17 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font-family: inherit;
   color: inherit;
+}
+
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
 }
 
 code,
@@ -103,29 +180,48 @@ pre,
   font-family: var(--mono);
 }
 
+.label {
+  font-family: var(--font-label);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--cream-2);
 }
 
+::-webkit-scrollbar-thumb {
+  background: var(--steel);
+  border: 3px solid var(--cream-2);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--steel-2);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--cream-2);
+}
+
+/* === Animations (keep tp-* names for back-compat) === */
 @keyframes tp-pulse {
-  0% { transform: scale(0.9); opacity: 0.7 }
-  100% { transform: scale(2.4); opacity: 0 }
+  0% { opacity: 1 }
+  50% { opacity: 0.35 }
+  100% { opacity: 1 }
 }
 
 @keyframes tp-blink {
@@ -138,13 +234,122 @@ pre,
   to { opacity: 1; transform: none }
 }
 
+@keyframes z-pulse {
+  0% { opacity: 1 }
+  50% { opacity: 0.35 }
+  100% { opacity: 1 }
+}
+
 .tp-fade-in {
   animation: tp-fade-in 200ms ease-out;
 }
 
+.z-blink {
+  animation: tp-blink 1s step-end infinite;
+}
+
+.z-pulse {
+  animation: z-pulse 1.5s ease-in-out infinite;
+}
+
+/* === Paper texture — v2: barely there === */
+.paper-tex {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(0, 0, 0, 0.012) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(0, 0, 0, 0.015) 0, transparent 40%);
+}
+
+/* === Rivets (flat steel disks used in panel corners) === */
+.rivet {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--steel);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.15),
+              inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+  display: inline-block;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.rivet::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
+  background: var(--steel-3);
+  border-radius: 50%;
+}
+
+.rivet-sm { width: 7px; height: 7px; }
+.rivet-sm::after { inset: 1.5px; }
+
+.rivet-xs { width: 5px; height: 5px; }
+.rivet-xs::after { inset: 1px; }
+
+/* === Caliper tick strip (use on top of panels) === */
+.tick-strip {
+  height: 10px;
+  position: relative;
+  border-bottom: 1.5px solid var(--steel);
+}
+
+.tick-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, var(--steel) 0 1px, transparent 1px 8px);
+  background-size: 100% 5px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+}
+
+.tick-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, var(--steel) 0 1.5px, transparent 1.5px 32px);
+  background-size: 100% 10px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+}
+
+/* Stripe used under panel headers (short-long dash) */
+.tick-stripe {
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--steel) 0 8px, transparent 8px 16px);
+  flex-shrink: 0;
+}
+
+/* === Hatched fills === */
+.hatch        { background-image: repeating-linear-gradient(45deg, var(--steel) 0 1px, transparent 1px 6px); }
+.hatch-red    { background-image: repeating-linear-gradient(45deg, var(--red) 0 1.5px, transparent 1.5px 7px); }
+.hatch-cream  { background-image: repeating-linear-gradient(45deg, var(--cream-3) 0 1px, transparent 1px 6px); }
+
+/* === Double rule === */
+.double-rule {
+  border-top: 1.5px solid var(--steel);
+  box-shadow: 0 3px 0 -1.5px var(--steel);
+}
+
+/* === Stamp (engraved rectangular badge) === */
+.stamp {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1.5px solid currentColor;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font: 600 10px/1.3 "Oswald", sans-serif;
+}
+
+.stamp-heavy {
+  padding: 3px 8px;
+  border-width: 2.5px;
+}
+
+/* === Layout helpers (preserved from prior tokens) === */
 .story-split {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
 }
 
@@ -156,4 +361,27 @@ pre,
     height: auto !important;
     min-height: 100%;
   }
+}
+
+/* === Tiptap / markdown fallbacks so they pick up ZIRA tokens === */
+.ProseMirror {
+  font-family: var(--font);
+  color: var(--ink);
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.ProseMirror code,
+.ProseMirror pre {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  font-family: var(--mono);
 }

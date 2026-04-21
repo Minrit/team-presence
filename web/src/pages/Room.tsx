@@ -66,17 +66,17 @@ export default function Room() {
               />
             )}
             <span
-              className={`inline-flex items-center gap-1.5 ${
-                connected ? 'text-emerald-500' : 'text-muted'
+              className={`label inline-flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase ${
+                connected ? 'text-[var(--ok)]' : 'text-[var(--muted)]'
               }`}
             >
               <span
                 aria-hidden="true"
-                className={`inline-block size-2 rounded-full ${
-                  connected ? 'bg-emerald-500' : 'bg-muted/50'
+                className={`inline-block size-2 ${
+                  connected ? 'bg-[var(--ok)] z-pulse' : 'bg-[var(--muted)]'
                 }`}
               />
-              {connected ? 'connected' : 'reconnecting…'}
+              {connected ? 'Link · OK' : 'Reconnecting'}
             </span>
             {error && <span className="text-red-500">{error}</span>}
           </div>

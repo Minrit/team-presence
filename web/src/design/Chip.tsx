@@ -18,18 +18,21 @@ export function Chip({
       type="button"
       onClick={onClick}
       title={title}
+      className="label"
       style={{
         padding: '4px 10px',
-        background: active ? 'var(--hv-fg)' : 'var(--surface)',
-        color: active ? '#fff' : 'var(--fg-2)',
-        border: `1px solid ${active ? 'var(--hv-fg)' : 'var(--hv-border)'}`,
-        borderRadius: 999,
-        font: '500 12px/1 var(--font)',
-        cursor: 'pointer',
+        background: active ? 'var(--steel)' : 'var(--cream-2)',
+        color: active ? 'var(--cream)' : 'var(--ink)',
+        border: `1.5px solid ${active ? 'var(--steel-2)' : 'var(--steel)'}`,
+        borderRadius: 0,
+        font: '700 10.5px/1 var(--font-label)',
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        cursor: onClick ? 'pointer' : 'default',
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        transition: 'all 120ms ease',
+        transition: 'all 80ms ease',
       }}
     >
       {color && (
@@ -37,7 +40,6 @@ export function Chip({
           style={{
             width: 8,
             height: 8,
-            borderRadius: '50%',
             background: color,
           }}
         />

@@ -11,24 +11,27 @@ export function StatusPill({
   const m = STATUS_META[status] ?? STATUS_META.todo
   return (
     <span
+      className="label"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 5,
-        padding: dense ? '2px 7px' : '3px 9px 3px 7px',
+        gap: 6,
+        padding: dense ? '2px 6px' : '3px 8px',
         background: m.bg,
         color: m.fg,
-        borderRadius: 'var(--radius-sm)',
-        font: `500 ${dense ? 11.5 : 12}px/1 var(--font)`,
+        border: `1.5px solid ${m.border}`,
+        borderRadius: 0,
+        font: `700 ${dense ? 9.5 : 10.5}px/1 var(--font-label)`,
+        letterSpacing: '0.15em',
         whiteSpace: 'nowrap',
       }}
     >
       <span
         style={{
-          width: 7,
-          height: 7,
-          borderRadius: '50%',
+          width: 5,
+          height: 5,
           background: m.dot,
+          display: 'inline-block',
         }}
       />
       {m.label}

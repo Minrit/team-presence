@@ -15,33 +15,33 @@ export default function Tile({ tile }: TileProps) {
   return (
     <Link
       to={`/room/${tile.session_id}`}
-      className={`group block rounded-xl border border-border bg-card/60 p-4 hover:border-accent/50 transition-colors ${
+      className={`group block border-[1.5px] border-[var(--steel)] bg-[var(--cream)] p-4 hover:border-[var(--red)] transition-colors ${
         state === 'offline' ? 'opacity-60' : ''
       }`}
     >
       <header className="flex items-center justify-between mb-2">
         <span
-          className="inline-flex items-center gap-1.5 text-xs font-medium"
+          className="label inline-flex items-center gap-1.5 text-[10px] tracking-[0.12em] uppercase"
           aria-label={`status ${state}`}
         >
           <StateDot state={state} />
-          <span className="text-muted">{stateLabel(state)}</span>
+          <span className="text-[var(--ink)]">{stateLabel(state)}</span>
         </span>
-        <span className="text-[10px] uppercase tracking-wide text-muted/70">
+        <span className="label text-[9.5px] tracking-[0.15em] text-[var(--muted)]">
           {cliLabel(tile.cli)}
         </span>
       </header>
-      <div className="font-mono text-xs text-fg break-all" title={tile.cwd}>
+      <div className="font-mono text-xs text-[var(--ink)] break-all" title={tile.cwd}>
         {cwdTail}
       </div>
-      <div className="flex items-center gap-2 mt-3 text-[11px] text-muted">
+      <div className="flex items-center gap-2 mt-3 text-[10.5px] font-mono text-[var(--muted)]">
         {tile.detected_story_id ? (
-          <span className="px-1.5 py-0.5 rounded bg-border/40 truncate max-w-[140px]">
-            story {tile.detected_story_id.slice(0, 8)}
+          <span className="px-1.5 py-0.5 bg-[var(--steel)] text-[var(--cream)] truncate max-w-[140px]">
+            {tile.detected_story_id.slice(0, 8)}
           </span>
         ) : (
-          <span className="px-1.5 py-0.5 rounded bg-border/20 text-muted/70">
-            unassigned
+          <span className="px-1.5 py-0.5 bg-[var(--cream-3)] border border-[var(--rule)]">
+            UNASSIGNED
           </span>
         )}
         <span className="ml-auto">{relative(tile.last_activity_at)}</span>
@@ -75,12 +75,12 @@ function stateLabel(s: TileState): string {
 
 function StateDot({ state }: { state: TileState }) {
   const cls = {
-    active: 'bg-green-500',
-    idle: 'bg-yellow-500',
-    muted: 'bg-blue-500',
-    offline: 'bg-muted/50',
+    active: 'bg-[var(--red)] z-pulse',
+    idle: 'bg-[var(--warn)]',
+    muted: 'bg-[var(--cyan)]',
+    offline: 'bg-[var(--muted)]',
   }[state]
-  return <span className={`inline-block size-2 rounded-full ${cls}`} aria-hidden="true" />
+  return <span className={`inline-block size-2 ${cls}`} aria-hidden="true" />
 }
 
 function cliLabel(cli: string): string {

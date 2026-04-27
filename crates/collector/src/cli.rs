@@ -65,9 +65,9 @@ pub struct LoginArgs {
 
 #[derive(Debug, clap::Args, Default)]
 pub struct StartArgs {
-    /// Which agent runtime is being tailed. Only `claude_code` has a real
-    /// capture path in MVP; the others are wire-compatible stubs for the
-    /// frontend AgentChip.
+    /// Which agent runtime is being tailed.
+    ///
+    /// `opencode` is a first-class wire kind.
     #[arg(long, value_parser = parse_agent_kind, default_value = "claude_code")]
     pub agent: AgentKindArg,
 }
@@ -78,6 +78,7 @@ pub enum AgentKindArg {
     ClaudeCode,
     Cursor,
     Codex,
+    OpenCode,
     Aider,
     Local,
 }
@@ -88,6 +89,7 @@ impl AgentKindArg {
             Self::ClaudeCode => team_presence_shared_types::AgentKind::ClaudeCode,
             Self::Cursor => team_presence_shared_types::AgentKind::Cursor,
             Self::Codex => team_presence_shared_types::AgentKind::Codex,
+            Self::OpenCode => team_presence_shared_types::AgentKind::OpenCode,
             Self::Aider => team_presence_shared_types::AgentKind::Aider,
             Self::Local => team_presence_shared_types::AgentKind::Local,
         }
@@ -99,10 +101,11 @@ fn parse_agent_kind(s: &str) -> Result<AgentKindArg, String> {
         "claude_code" => Ok(AgentKindArg::ClaudeCode),
         "cursor" => Ok(AgentKindArg::Cursor),
         "codex" => Ok(AgentKindArg::Codex),
+        "opencode" => Ok(AgentKindArg::OpenCode),
         "aider" => Ok(AgentKindArg::Aider),
         "local" => Ok(AgentKindArg::Local),
         other => Err(format!(
-            "unknown agent '{other}' — expected claude_code|cursor|codex|aider|local"
+            "unknown agent '{other}' — expected claude_code|cursor|codex|opencode|aider|local"
         )),
     }
 }

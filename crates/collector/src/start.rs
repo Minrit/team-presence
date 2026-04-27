@@ -9,7 +9,9 @@ use chrono::Utc;
 use team_presence_shared_types::{AgentKind, Frame};
 use tokio::sync::mpsc;
 
-use crate::capture::{hook_socket, session_uuid, transcript::Tailer, HookEvent};
+use crate::capture::{
+    hook_socket, opencode::OpenCodeTailer, session_uuid, transcript::Tailer, HookEvent,
+};
 use crate::config;
 use crate::credentials::Credentials;
 use crate::heartbeat::{self, ActiveSessions};
@@ -74,6 +76,10 @@ pub async fn run(creds: Credentials, agent_kind: AgentKind) -> anyhow::Result<()
         muted = mute::is_muted(),
         "listening for hook events"
     );
+
+    if matches!(agent_kind, AgentKind::Codex | AgentKind::OpenCode) {
+        spawn_opencode_tailer(agent_kind, frame_tx.clone(), sessions.clone());
+    }
 
     while let Some(evt) = hook_rx.recv().await {
         match evt {
@@ -193,6 +199,29 @@ fn spawn_tailer(session_id: uuid::Uuid, path: PathBuf, frame_tx: mpsc::Sender<Fr
                 component = "collector.start",
                 phase = "tailer_err",
                 session_id = %session_id,
+                error = %e,
+            );
+        }
+    });
+}
+
+fn spawn_opencode_tailer(
+    agent_kind: AgentKind,
+    frame_tx: mpsc::Sender<Frame>,
+    sessions: ActiveSessions,
+) {
+    let home = match std::env::var_os("HOME") {
+        Some(v) => PathBuf::from(v),
+        None => return,
+    };
+    let db_path = home.join(".local/share/opencode/opencode.db");
+    let gated_tx = spawn_mute_gate(frame_tx);
+    let tailer = OpenCodeTailer::new(agent_kind, db_path, gated_tx, sessions);
+    tokio::spawn(async move {
+        if let Err(e) = tailer.run().await {
+            tracing::warn!(
+                component = "collector.start",
+                phase = "opencode_tailer_err",
                 error = %e,
             );
         }

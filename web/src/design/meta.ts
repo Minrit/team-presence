@@ -53,6 +53,7 @@ export const AGENTS: Record<AgentKind, AgentMeta> = {
   claude_code: { id: 'claude_code', short: 'CLAUDE', code: 'CC', color: 'var(--red)',   label: 'Claude Code' },
   cursor:      { id: 'cursor',      short: 'CURSOR', code: 'CR', color: 'var(--cyan)',  label: 'Cursor' },
   codex:       { id: 'codex',       short: 'CODEX',  code: 'CX', color: 'var(--ok)',    label: 'Codex' },
+  opencode:    { id: 'opencode',    short: 'OPEN',   code: 'OP', color: 'var(--ok)',    label: 'OpenCode' },
   aider:       { id: 'aider',       short: 'AIDER',  code: 'AI', color: 'var(--iron)',  label: 'Aider' },
   local:       { id: 'local',       short: 'LOCAL',  code: 'LO', color: 'var(--muted)', label: 'Local shell' },
 }

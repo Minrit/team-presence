@@ -32,8 +32,8 @@ export interface SessionTools {
   connected: boolean
 }
 
-const RUN_HINT = /(?:pass|passing|ok|✓)/i
-const FAIL_HINT = /(?:fail|error|FAILED|✗)/i
+const RUN_HINT = /(?:pass|passing|ok|✓|completed|exit\s*0|status\s*=\s*completed)/i
+const FAIL_HINT = /(?:fail|error|FAILED|✗|stderr:|exit\s*[1-9]\d*|status\s*=\s*failed)/i
 
 export function useSessionTools(sessionId: string | null): SessionTools {
   const { entries, connected } = useSseRoom(sessionId)
@@ -69,6 +69,13 @@ export function useSessionTools(sessionId: string | null): SessionTools {
               status: 'running',
             }
             runs.push(activeRun)
+          } else if (tool === 'read' || tool === 'write' || tool === 'edit') {
+            const cur = changes.get(target ?? '(unknown)') ?? {
+              path: target ?? '(unknown)',
+              add: 0,
+              del: 0,
+            }
+            changes.set(cur.path, cur)
           }
           continue
         }
@@ -108,12 +115,23 @@ function lastEntry(m: Map<string, FileEdit>): FileEdit | undefined {
 function splitTool(text: string): { tool: string | null; target: string | null; rest: string | null } {
   const trimmed = text.trim()
   if (!trimmed) return { tool: null, target: null, rest: null }
-  const [head, ...rest] = trimmed.split(/\s+/)
-  const restStr = rest.join(' ')
+  let head = ''
+  let restStr = ''
+  const colon = trimmed.indexOf(':')
+  if (colon > 0) {
+    head = trimmed.slice(0, colon)
+    restStr = trimmed.slice(colon + 1).trim()
+  } else {
+    const parts = trimmed.split(/\s+/)
+    head = parts[0] ?? ''
+    restStr = parts.slice(1).join(' ')
+  }
+  const rest = restStr ? restStr.split(/\s+/) : []
   // Try to tease out path=... or the first arg.
   const m = restStr.match(/(?:path|file)[=:]\s*([^\s,"']+)/i)
+  const normalized = head.toLowerCase()
   return {
-    tool: head.toLowerCase(),
+    tool: normalized,
     target: m?.[1] ?? rest[0] ?? null,
     rest: restStr,
   }

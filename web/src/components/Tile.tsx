@@ -85,6 +85,7 @@ function StateDot({ state }: { state: TileState }) {
 
 function cliLabel(cli: string): string {
   if (cli === 'claude_code') return 'claude'
+  if (cli === 'opencode') return 'opencode'
   return cli
 }
 

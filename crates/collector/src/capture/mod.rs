@@ -6,6 +6,7 @@
 //! capture path can be exercised without Unit 7.
 
 pub mod hook_socket;
+pub mod opencode;
 pub mod transcript;
 
 use serde::Deserialize;

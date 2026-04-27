@@ -18,7 +18,7 @@ pub async fn upsert_session_start(
     git_branch: Option<&str>,
     started_at: DateTime<Utc>,
 ) -> sqlx::Result<SessionMeta> {
-    sqlx::query_as::<_, SessionMeta>(
+    match sqlx::query_as::<_, SessionMeta>(
         r#"
         INSERT INTO sessions_meta (
             id, collector_token_id, user_id, agent_kind, cwd, git_remote, git_branch,
@@ -44,6 +44,26 @@ pub async fn upsert_session_start(
     .bind(started_at)
     .fetch_one(db)
     .await
+    {
+        Ok(meta) => Ok(meta),
+        Err(e) => {
+            if let sqlx::Error::Database(db_err) = &e {
+                let msg = db_err.message();
+                if msg.contains("sessions_meta_agent_kind_check")
+                    || msg.contains("violates check constraint")
+                {
+                    tracing::error!(
+                        component = "server",
+                        phase = "session_start_agent_kind_rejected",
+                        agent_kind = agent_kind,
+                        error = %msg,
+                        "agent_kind rejected by DB constraint; run latest migrations to include new agent kinds"
+                    );
+                }
+            }
+            Err(e)
+        }
+    }
 }
 
 pub async fn bump_activity(db: &PgPool, session_id: Uuid) -> sqlx::Result<()> {

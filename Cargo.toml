@@ -48,6 +48,7 @@ async-stream = "0.3"
 tokio-stream = "0.1"
 regex = "1"
 once_cell = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 # Release profile for distributed binaries (tp-mcp, team-presence CLI).
 # `strip = "symbols"` drops ~40% of the binary size with no runtime impact.

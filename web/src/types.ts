@@ -87,7 +87,7 @@ export const STATUS_LABEL: Record<StoryStatus, string> = {
 // Live session wire types — mirror crates/server/src/session/model.rs GridTile
 // and shared-types Frame. Snake_case intentional.
 
-export type AgentKind = 'claude_code' | 'cursor' | 'codex' | 'aider' | 'local'
+export type AgentKind = 'claude_code' | 'cursor' | 'codex' | 'opencode' | 'aider' | 'local'
 /** Legacy alias; collector frame uses `cli` on the wire for v1 compat. */
 export type CliKind = AgentKind
 export type ContentRole = 'user' | 'assistant' | 'tool_use' | 'tool_result' | 'meta'

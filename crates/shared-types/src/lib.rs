@@ -25,6 +25,8 @@ pub enum AgentKind {
     ClaudeCode,
     Cursor,
     Codex,
+    #[serde(rename = "opencode")]
+    OpenCode,
     Aider,
     Local,
 }
@@ -35,6 +37,7 @@ impl AgentKind {
             Self::ClaudeCode => "claude_code",
             Self::Cursor => "cursor",
             Self::Codex => "codex",
+            Self::OpenCode => "opencode",
             Self::Aider => "aider",
             Self::Local => "local",
         }
@@ -48,6 +51,7 @@ impl std::str::FromStr for AgentKind {
             "claude_code" => Ok(Self::ClaudeCode),
             "cursor" => Ok(Self::Cursor),
             "codex" => Ok(Self::Codex),
+            "opencode" => Ok(Self::OpenCode),
             "aider" => Ok(Self::Aider),
             "local" => Ok(Self::Local),
             other => Err(format!("unknown agent_kind: {other}")),
@@ -148,6 +152,7 @@ mod tests {
             AgentKind::ClaudeCode,
             AgentKind::Cursor,
             AgentKind::Codex,
+            AgentKind::OpenCode,
             AgentKind::Aider,
             AgentKind::Local,
         ] {

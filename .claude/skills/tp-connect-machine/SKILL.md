@@ -1,6 +1,6 @@
 ---
 name: tp-connect-machine
-description: Wire a new laptop into team-presence — collect user's email + password, log in via MCP, install Claude Code hooks, start the collector daemon, verify the session shows up in Stream. Use on first-run, when a teammate asks "how do I connect", or when the user says "/connect", "接入我的电脑", "connect my machine". Drives tp_collector_login → tp_collector_install_hooks → (human runs `team-presence start`) → tp_collector_status.
+description: Wire a new laptop into team-presence — collect user's email + password, log in via MCP, install Claude Code hooks, start the collector daemon (OpenCode mode), verify the session shows up in Stream. Use on first-run, when a teammate asks "how do I connect", or when the user says "/connect", "接入我的电脑", "connect my machine". Drives tp_collector_login → tp_collector_install_hooks → (human runs `team-presence start --agent opencode`) → tp_collector_status/tp_collector_doctor.
 ---
 
 # tp-connect-machine
@@ -68,7 +68,7 @@ Expected: `installed=[...session-start.sh, ...stop.sh]`. If you see
 `skipped=[...]` both files, hooks are already present from an earlier
 run — that's fine, no action needed.
 
-## 4. Launch the collector daemon
+## 4. Launch the collector daemon (OpenCode)
 
 The collector is a long-running process that tails Claude Code
 transcripts and streams frames to the server. MCP cannot keep a
@@ -77,7 +77,7 @@ command in a persistent terminal**:
 
 ```bash
 cd $TP_REPO   # or the absolute path to the team-presence repo
-cargo run --bin team-presence -- start
+cargo run --bin team-presence -- start --agent opencode
 ```
 
 They should see in stderr:
@@ -98,7 +98,8 @@ Code session (the `Stop` hook fires on each assistant turn) they should
 see their terminal tile appear.
 
 If nothing appears after 30 seconds:
-- `tp_collector_status` — confirm still logged in + not muted.
+- `tp_collector_status` — confirm still logged in + not muted + `agent_mode=opencode`.
+- `tp_collector_doctor` — confirm `opencode_db_state=readable` and check `fix=` guidance when degraded.
 - Check the `team-presence start` stderr for errors.
 - `ls ~/.claude/hooks/team-presence-*.sh` — confirm hooks are present.
 - Tell them to restart their Claude Code client — existing sessions

@@ -835,22 +835,113 @@ impl TpMcp {
     }
 
     #[tool(
-        description = "Report whether credentials are saved + whether muted. Does not require network access."
+        description = "Report collector local status: credentials, mute flag, OpenCode db reachability, latest OpenCode event time, and active agent mode. Does not require network access."
     )]
     pub async fn tp_collector_status(
         &self,
         Parameters(_): Parameters<EmptyArgs>,
     ) -> Result<CallToolResult, ErrorData> {
-        let muted = team_presence_collector::mute::is_muted();
-        let summary = match team_presence_collector::credentials::load() {
-            Ok(Some(c)) => format!(
-                "status=logged_in\nserver={}\nuser_email={}\ncollector_name={}\ncollector_id={}\nmuted={}",
-                c.server, c.user_email, c.collector_name, c.collector_id, muted,
-            ),
-            Ok(None) => format!("status=logged_out\nmuted={}", muted),
-            Err(e) => format!("status=error\nreason={e}\nmuted={}", muted),
-        };
-        ok_msg(summary)
+        match team_presence_collector::diagnostics::collect_status() {
+            Ok(report) => {
+                let mut lines = Vec::new();
+                lines.push(format!(
+                    "status={}",
+                    if report.logged_in {
+                        "logged_in"
+                    } else {
+                        "logged_out"
+                    }
+                ));
+                if let Some(server) = report.server {
+                    lines.push(format!("server={server}"));
+                }
+                if let Some(email) = report.user_email {
+                    lines.push(format!("user_email={email}"));
+                }
+                if let Some(name) = report.collector_name {
+                    lines.push(format!("collector_name={name}"));
+                }
+                if let Some(id) = report.collector_id {
+                    lines.push(format!("collector_id={id}"));
+                }
+                lines.push("agent_mode=opencode".to_string());
+                lines.push(format!("muted={}", report.muted));
+                lines.push(format!("socket={}", report.socket_path.display()));
+                lines.push(format!("opencode_db={}", report.opencode_db.path.display()));
+                lines.push(format!(
+                    "opencode_db_state={}",
+                    report.opencode_db.state.as_str()
+                ));
+                lines.push(format!(
+                    "opencode_last_event_at={}",
+                    report
+                        .opencode_db
+                        .last_event_at
+                        .map(|v| v.to_rfc3339())
+                        .unwrap_or_else(|| "-".to_string())
+                ));
+                if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+                    lines.push(format!("hint={hint}"));
+                }
+                ok_msg(lines.join("\n"))
+            }
+            Err(e) => ok_msg(format!("status=error\nreason={e}")),
+        }
+    }
+
+    #[tool(
+        description = "Run local collector diagnostics with OpenCode-focused remediation hints. Returns non-OK hints when not logged in or opencode.db is unreadable."
+    )]
+    pub async fn tp_collector_doctor(
+        &self,
+        Parameters(_): Parameters<EmptyArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        match team_presence_collector::diagnostics::collect_status() {
+            Ok(report) => {
+                let mut lines = Vec::new();
+                lines.push("doctor=collector".to_string());
+                lines.push(format!(
+                    "status={}",
+                    if report.logged_in {
+                        "logged_in"
+                    } else {
+                        "logged_out"
+                    }
+                ));
+                lines.push("agent_mode=opencode".to_string());
+                lines.push(format!("muted={}", report.muted));
+                lines.push(format!("socket={}", report.socket_path.display()));
+                lines.push(format!("opencode_db={}", report.opencode_db.path.display()));
+                lines.push(format!(
+                    "opencode_db_state={}",
+                    report.opencode_db.state.as_str()
+                ));
+                lines.push(format!(
+                    "opencode_last_event_at={}",
+                    report
+                        .opencode_db
+                        .last_event_at
+                        .map(|v| v.to_rfc3339())
+                        .unwrap_or_else(|| "-".to_string())
+                ));
+
+                let mut ok = true;
+                if !report.logged_in {
+                    ok = false;
+                    lines.push(
+                        "fix=run `team-presence login --server <url> --email <you>` first"
+                            .to_string(),
+                    );
+                }
+                if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+                    ok = false;
+                    lines.push(format!("fix={hint}"));
+                }
+                lines.push(format!("doctor_status={}", if ok { "ok" } else { "degraded" }));
+                ok_msg(lines.join("\n"))
+            }
+            Err(e) => ok_msg(format!("doctor=collector\ndoctor_status=error\nreason={e}")),
+        }
     }
 
     #[tool(

@@ -14,6 +14,7 @@ pub mod client;
 pub mod config;
 pub mod consent;
 pub mod credentials;
+pub mod diagnostics;
 pub mod heartbeat;
 pub mod hooks;
 pub mod mute;

@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
     name = "team-presence",
     version,
     about = "Laptop-side collector for the team-presence platform.",
-    long_about = "Streams your claude-code sessions to a team-presence server \
+    long_about = "Streams your Claude Code/OpenCode sessions to a team-presence server \
                   so teammates can see what you're working on. \
                   Content is 24h-TTL in Redis; metadata is retained in Postgres."
 )]
@@ -19,12 +19,15 @@ pub enum Command {
     /// Log in to a team-presence server and mint a collector token.
     Login(LoginArgs),
 
-    /// Start the collector daemon: listen for claude-code hook events,
-    /// tail transcripts, stream frames to the server over WebSocket.
+    /// Start the collector daemon: listen for hook events / OpenCode DB,
+    /// tail content, stream frames to the server over WebSocket.
     Start(StartArgs),
 
     /// Print current configuration + credential state.
     Status,
+
+    /// Run local diagnostics (OpenCode DB + mode hints).
+    Doctor,
 
     /// Pause content streaming (heartbeat + session metadata still flow).
     Mute,

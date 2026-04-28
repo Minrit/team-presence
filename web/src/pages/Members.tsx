@@ -82,7 +82,7 @@ export default function Members() {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 14, height: '100%', padding: 18, minHeight: 0 }}>
       {/* Left list */}
-      <Card style={{ padding: 6, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <Card style={{ padding: 6, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <button
           type="button"
           onClick={() => setInviteOpen(true)}
@@ -159,7 +159,7 @@ export default function Members() {
       </Card>
 
       {/* Right detail */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto', minWidth: 0, minHeight: 0 }}>
         {!selected && (
           <Card style={{ padding: 24, color: 'var(--fg-3)' }}>
             Select a member on the left.
@@ -389,17 +389,27 @@ function SessionsGrid({
       <Card style={{ padding: 18, color: 'var(--fg-3)' }}>No live sessions right now.</Card>
     )
   }
+  // Cap how much vertical space the live-sessions grid eats so the
+  // AssignedStories card below always remains visible / reachable. With many
+  // sessions the grid scrolls internally instead of pushing assigned-stories
+  // off the page.
+  const cols = active.length >= 3 ? 3 : Math.max(1, active.length)
+  const rows = Math.ceil(active.length / cols)
+  const tileH = active.length >= 4 ? 240 : 300
+  const naturalH = rows * tileH + (rows - 1) * 12
   return (
     <div
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
         gap: 12,
-        minHeight: 280,
+        flexShrink: 0,
+        maxHeight: `min(${naturalH}px, 60vh)`,
+        overflow: 'auto',
       }}
     >
       {active.map((t) => (
-        <div key={t.session_id} style={{ height: 320 }}>
+        <div key={t.session_id} style={{ height: tileH }}>
           <Terminal
             sessionId={t.session_id}
             header={{

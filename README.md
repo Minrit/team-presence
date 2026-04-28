@@ -63,12 +63,54 @@ AOF — back that up and you've backed up the whole service.
 ## Scope (MVP)
 
 - Minimal story/task Kanban (Todo / Doing / Done).
-- Live text streaming Grid of teammates' **claude code** sessions (via
-  `~/.claude/projects/<id>/history.jsonl` tail).
+- Live text streaming Grid of teammates' Claude Code / OpenCode sessions
+  (Claude via `~/.claude/projects/<id>/history.jsonl`, OpenCode via
+  `~/.local/share/opencode/opencode.db`).
 - One-shot bmad markdown importer.
 
-**Explicit non-goals:** OpenCode capture (Phase 2), content redaction
-(Phase 2), role tiers (everyone admin), multi-workspace, permanent archive.
+**Explicit non-goals:** content redaction (Phase 2), role tiers (everyone
+admin), multi-workspace, permanent archive.
+
+## OpenCode quick connect
+
+For OpenCode users (recommended), run the collector in OpenCode mode:
+
+```bash
+cd <team-presence-repo>
+cargo run --bin team-presence -- install-hooks
+cargo run --bin team-presence -- start --agent opencode
+```
+
+Check local diagnostics any time:
+
+```bash
+cargo run --bin team-presence -- status
+cargo run --bin team-presence -- doctor
+```
+
+`status` / `doctor` include OpenCode-specific fields:
+
+- `agent_mode=opencode`
+- `opencode_db_state` (`readable|missing|permission_denied|...`)
+- `opencode_last_event_at`
+
+When `opencode_db_state != readable`, follow the `fix:` hint printed by
+`doctor`.
+
+### 5-minute onboarding drill
+
+Use this as the acceptance script for a fresh teammate machine:
+
+1. Run installer + login flow (`/tp-connect-machine` or `install.sh` + `tp_collector_login`).
+2. Run `cargo run --bin team-presence -- start --agent opencode` in a persistent terminal.
+3. Run `cargo run --bin team-presence -- doctor` and confirm:
+   - `status: logged_in`
+   - `agent_mode: opencode`
+   - `opencode_db_state: readable`
+   - `doctor: ok`
+4. Open `/stream`, trigger one OpenCode tool call, verify terminal tile shows `tool_use` + `tool_result`.
+
+If step 3 passes but step 4 fails, capture the collector stderr and open a bug with the exact `doctor` output.
 
 ## Layout
 

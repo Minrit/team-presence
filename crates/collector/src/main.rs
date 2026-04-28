@@ -2,7 +2,7 @@ use clap::Parser;
 use team_presence_collector::{
     cli::{Cli, Command, InstallHooksArgs, LoginArgs, StartArgs},
     client::ApiClient,
-    config, consent, credentials, hooks, mute, start, telemetry,
+    consent, credentials, diagnostics, hooks, mute, start, telemetry,
 };
 
 #[tokio::main]
@@ -14,6 +14,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Login(args) => cmd_login(args).await?,
         Command::Start(args) => cmd_start(args).await?,
         Command::Status => cmd_status()?,
+        Command::Doctor => cmd_doctor()?,
         Command::Mute => {
             mute::mute()?;
             println!("muted — content frames suppressed until `team-presence unmute`.");
@@ -83,23 +84,63 @@ async fn cmd_start(args: StartArgs) -> anyhow::Result<()> {
 }
 
 fn cmd_status() -> anyhow::Result<()> {
-    let muted = mute::is_muted();
-    let config_dir = config::config_dir()?;
-    match credentials::load()? {
-        Some(c) => {
-            println!("status:    logged in");
-            println!("server:    {}", c.server);
-            println!("user:      {}", c.user_email);
-            println!("collector: {} (id {})", c.collector_name, c.collector_id);
-        }
-        None => {
-            println!("status:    not logged in — run `team-presence login`");
-        }
+    let report = diagnostics::collect_status()?;
+    if report.logged_in {
+        println!("status:    logged in");
+        println!("server:    {}", report.server.as_deref().unwrap_or("?"));
+        println!("user:      {}", report.user_email.as_deref().unwrap_or("?"));
+        println!(
+            "collector: {} (id {})",
+            report.collector_name.as_deref().unwrap_or("?"),
+            report.collector_id.as_deref().unwrap_or("?"),
+        );
+    } else {
+        println!("status:    not logged in — run `team-presence login`");
     }
-    println!("muted:     {muted}");
-    println!("config:    {}", config_dir.display());
-    println!("fallback:  {}", credentials::fallback_path()?.display());
-    println!("socket:    {}", config::hook_socket_path().display());
+    println!("muted:     {}", report.muted);
+    println!("config:    {}", report.config_dir.display());
+    println!("fallback:  {}", report.fallback_path.display());
+    println!("socket:    {}", report.socket_path.display());
+    println!("agent:     opencode");
+    println!("opencode_db: {}", report.opencode_db.path.display());
+    println!("opencode_db_state: {}", report.opencode_db.state.as_str());
+    match report.opencode_db.last_event_at {
+        Some(ts) => println!("opencode_last_event_at: {ts}"),
+        None => println!("opencode_last_event_at: -"),
+    }
+    if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+        println!("opencode_hint: {hint}");
+    }
+    Ok(())
+}
+
+fn cmd_doctor() -> anyhow::Result<()> {
+    let report = diagnostics::collect_status()?;
+    println!("doctor: collector local diagnostics");
+    println!("status: {}", if report.logged_in { "logged_in" } else { "logged_out" });
+    if report.logged_in {
+        println!("server: {}", report.server.as_deref().unwrap_or("?"));
+        println!("collector_id: {}", report.collector_id.as_deref().unwrap_or("?"));
+    } else {
+        println!("hint: run `team-presence login --server <url> --email <you>` first");
+    }
+    println!("agent_mode: opencode");
+    println!("muted: {}", report.muted);
+    println!("socket: {}", report.socket_path.display());
+    println!("opencode_db: {}", report.opencode_db.path.display());
+    println!("opencode_db_state: {}", report.opencode_db.state.as_str());
+    if let Some(ts) = report.opencode_db.last_event_at {
+        println!("opencode_last_event_at: {ts}");
+    } else {
+        println!("opencode_last_event_at: -");
+    }
+    if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+        println!("fix: {hint}");
+    }
+    if !report.logged_in || !matches!(report.opencode_db.state, diagnostics::OpenCodeDbState::Readable) {
+        std::process::exit(2);
+    }
+    println!("doctor: ok");
     Ok(())
 }
 

@@ -20,7 +20,7 @@ Canonical locations of this file:
 |---|---|
 | Project | `team-presence` — read-only PM board + live Claude Code sessions for a 6-person team |
 | HTTP API | `http://localhost:8080/api/v1/*` (Bearer auth) |
-| MCP server | `tp-mcp` (stdio JSON-RPC, 31 tools) |
+| MCP server | `tp-mcp` (stdio JSON-RPC, 31+ tools) |
 | Skills | `team-presence/.claude/skills/tp-*/SKILL.md` (7 BMad-style skills) |
 | Web UI | `http://localhost:5173` (read-only observation dashboard) |
 | Typical repo root | `~/ZStack/ai-native-workspace/team-presence` |
@@ -383,7 +383,7 @@ subcommands. Run it in a **persistent** shell (or under `nohup` /
 
 ```bash
 cd $TP_REPO
-cargo run --bin team-presence -- start
+cargo run --bin team-presence -- start --agent opencode
 ```
 
 Stays running, tails transcripts, streams frames over WebSocket. Logs
@@ -395,7 +395,7 @@ INFO connecting                 url=ws://localhost:8080/ws/collector
 INFO collector connected        collector_token_id=<uuid>
 ```
 
-The `team-presence start` process must stay alive for the whole
+The `team-presence start --agent opencode` process must stay alive for the whole
 session. Closing that shell = stream goes dark.
 
 ### 5.4 Verify
@@ -411,6 +411,8 @@ check:
 - `ls ~/.claude/hooks/team-presence-*.sh` — hooks exist
 - `ls /tmp/team-presence-$UID.sock` — collector socket exists
 - Tail the `team-presence start` stderr for `collector connected`
+- Run `tp_collector_doctor` and follow `fix=` lines when
+  `doctor_status=degraded` (especially `opencode_db_state`).
 
 ### 5.5 Session control
 
@@ -494,7 +496,7 @@ a skill is required to use team-presence — they are guidance, not gates.
 
 ---
 
-## 8. Canonical tool surface (30 tools)
+## 8. Canonical tool surface (31+ tools)
 
 Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 0-based. Story statuses are: `todo | in_progress | blocked | review | done`.
@@ -548,7 +550,8 @@ Every write tool adds `X-Actor-Kind: agent` automatically. Indexes are
 | Tool | Semantics |
 |---|---|
 | `tp_collector_login(server, email, password, collector_name?)` | Log in, mint collector token, persist credentials. MCP client must restart tp-mcp after this for write tools to come online. |
-| `tp_collector_status()` | Login / mute / socket state. |
+| `tp_collector_status()` | Login / mute / socket state + OpenCode diagnostics (`agent_mode`, db state, last event). |
+| `tp_collector_doctor()` | OpenCode-oriented local diagnostics with actionable `fix=` hints. |
 | `tp_collector_install_hooks(force?)` | Drop Claude Code hook scripts into `~/.claude/hooks/`. |
 | `tp_collector_uninstall_hooks()` | Reverse of install. |
 | `tp_collector_mute()` | Stop streaming session_content frames. |

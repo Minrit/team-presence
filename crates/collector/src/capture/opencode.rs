@@ -506,6 +506,7 @@ fn summarize_json(v: &serde_json::Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn tool_part_emits_use_and_result_frames() {
@@ -573,6 +574,60 @@ mod tests {
     }
 
     #[test]
+    fn reasoning_part_with_plain_text_emits_meta_reasoning() {
+        let part = r#"{
+          "type":"reasoning",
+          "text":"considering options"
+        }"#;
+        let sid = Uuid::new_v4();
+        let frames = part_to_frames(sid, 1_777_000_000_000, part, None);
+        assert_eq!(frames.len(), 1);
+        match &frames[0] {
+            Frame::SessionContent { role, text, .. } => {
+                assert_eq!(*role, ContentRole::Meta);
+                assert!(text.0.contains("[reasoning]"));
+                assert!(text.0.contains("considering options"));
+            }
+            _ => panic!("unexpected frame variant"),
+        }
+    }
+
+    #[test]
+    fn step_start_and_finish_emit_meta_events() {
+        let sid = Uuid::new_v4();
+        let start = r#"{"type":"step-start"}"#;
+        let finish = r#"{
+          "type":"step-finish",
+          "reason":"completed",
+          "tokens":{"reasoning":12,"output":34}
+        }"#;
+
+        let start_frames = part_to_frames(sid, 1_777_000_000_001, start, None);
+        let finish_frames = part_to_frames(sid, 1_777_000_000_002, finish, None);
+
+        assert_eq!(start_frames.len(), 1);
+        assert_eq!(finish_frames.len(), 1);
+
+        match &start_frames[0] {
+            Frame::SessionContent { role, text, .. } => {
+                assert_eq!(*role, ContentRole::Meta);
+                assert!(text.0.contains("[step] started"));
+            }
+            _ => panic!("unexpected frame variant"),
+        }
+
+        match &finish_frames[0] {
+            Frame::SessionContent { role, text, .. } => {
+                assert_eq!(*role, ContentRole::Meta);
+                assert!(text.0.contains("[step] finished"));
+                assert!(text.0.contains("reasoning_tokens=12"));
+                assert!(text.0.contains("output_tokens=34"));
+            }
+            _ => panic!("unexpected frame variant"),
+        }
+    }
+
+    #[test]
     fn ordering_watermark_uses_part_id_tie_breaker() {
         let mut items = vec![
             (100_i64, "prt_b".to_string()),
@@ -583,5 +638,140 @@ mod tests {
         assert_eq!(items[0].1, "prt_a");
         assert_eq!(items[1].1, "prt_b");
         assert_eq!(items[2].1, "prt_c");
+    }
+
+    #[test]
+    fn high_frequency_completed_tools_keep_tool_result_frames() {
+        let total = 120usize;
+        let mut tool_result_frames = 0usize;
+        let sid = Uuid::new_v4();
+        for i in 0..total {
+            let part = format!(
+                r#"{{
+                  "type":"tool",
+                  "tool":"bash",
+                  "callID":"call_{i}",
+                  "state":{{
+                    "status":"completed",
+                    "input":{{"command":"echo {i}"}},
+                    "output":{{"stdout":"out_{i}","stderr":"","exitCode":0}}
+                  }}
+                }}"#
+            );
+            let frames = part_to_frames(sid, 1_777_000_000_000 + i as i64, &part, None);
+            assert_eq!(frames.len(), 2, "every completed tool should emit use+result");
+            if matches!(
+                frames.get(1),
+                Some(Frame::SessionContent {
+                    role: ContentRole::ToolResult,
+                    ..
+                })
+            ) {
+                tool_result_frames += 1;
+            }
+        }
+        assert_eq!(tool_result_frames, total);
+    }
+
+    #[test]
+    fn poll_once_interleaved_source_sessions_keep_isolation() {
+        let temp = TempDir::new().expect("tempdir");
+        let db_path = temp.path().join("opencode.db");
+        seed_minimal_db(&db_path);
+
+        let (tx, _rx) = tokio::sync::mpsc::channel(8);
+        let sessions = ActiveSessions::default();
+        let mut tailer = OpenCodeTailer::new(AgentKind::OpenCode, db_path.clone(), tx, sessions);
+
+        // Prime watermark.
+        let primed = tailer.poll_once().expect("prime poll");
+        assert!(primed.is_empty());
+
+        insert_part(
+            &db_path,
+            "prt_001",
+            "src_a",
+            1_777_000_000_001,
+            r#"{"type":"tool","tool":"bash","callID":"a1","state":{"status":"completed","input":{"command":"pwd"},"output":{"stdout":"/repo/a","stderr":"","exitCode":0}}}"#,
+            "msg_a",
+            r#"{"role":"assistant"}"#,
+        );
+        insert_part(
+            &db_path,
+            "prt_002",
+            "src_b",
+            1_777_000_000_002,
+            r#"{"type":"tool","tool":"bash","callID":"b1","state":{"status":"completed","input":{"command":"pwd"},"output":{"stdout":"/repo/b","stderr":"","exitCode":0}}}"#,
+            "msg_b",
+            r#"{"role":"assistant"}"#,
+        );
+
+        let frames = tailer.poll_once().expect("poll with interleaved sessions");
+        let starts = frames
+            .iter()
+            .filter(|f| matches!(f, Frame::SessionStart { .. }))
+            .count();
+        let tool_results = frames
+            .iter()
+            .filter(|f| {
+                matches!(
+                    f,
+                    Frame::SessionContent {
+                        role: ContentRole::ToolResult,
+                        ..
+                    }
+                )
+            })
+            .count();
+        assert_eq!(starts, 2, "two source sessions should map to two TP sessions");
+        assert_eq!(tool_results, 2, "each completed tool should preserve result frame");
+    }
+
+    fn seed_minimal_db(path: &std::path::Path) {
+        let conn = rusqlite::Connection::open(path).expect("open sqlite");
+        conn.execute_batch(
+            "
+            CREATE TABLE session (
+              id TEXT PRIMARY KEY,
+              directory TEXT
+            );
+            CREATE TABLE message (
+              id TEXT PRIMARY KEY,
+              data TEXT
+            );
+            CREATE TABLE part (
+              id TEXT PRIMARY KEY,
+              session_id TEXT NOT NULL,
+              message_id TEXT,
+              time_updated INTEGER NOT NULL,
+              data TEXT NOT NULL
+            );
+            INSERT INTO session(id, directory) VALUES ('src_a', '/repo/a');
+            INSERT INTO session(id, directory) VALUES ('src_b', '/repo/b');
+            ",
+        )
+        .expect("seed schema");
+    }
+
+    fn insert_part(
+        db_path: &std::path::Path,
+        part_id: &str,
+        source_session_id: &str,
+        time_updated: i64,
+        part_data: &str,
+        message_id: &str,
+        message_data: &str,
+    ) {
+        let conn = rusqlite::Connection::open(db_path).expect("open sqlite");
+        conn.execute(
+            "INSERT INTO message(id, data) VALUES (?1, ?2)",
+            rusqlite::params![message_id, message_data],
+        )
+        .expect("insert message");
+        conn.execute(
+            "INSERT INTO part(id, session_id, message_id, time_updated, data) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![part_id, source_session_id, message_id, time_updated, part_data],
+        )
+        .expect("insert part");
     }
 }

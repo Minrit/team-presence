@@ -16,11 +16,11 @@ use super::{install_script, DownloadsState};
 /// Accept only our own release-artifact naming pattern. This also blocks
 /// any attempt at directory traversal (`..`), since `:name` in axum is a
 /// single path segment but we double down with an explicit regex anchor.
-static ARTIFACT_NAME: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^tp-mcp-(?:darwin|linux)-(?:aarch64|x86_64)$").unwrap());
+static ARTIFACT_NAME: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^(?:tp-mcp|team-presence)-(?:darwin|linux)-(?:aarch64|x86_64)$").unwrap()
+});
 
-const ERR_JSON_CT: (header::HeaderName, &str) =
-    (header::CONTENT_TYPE, "application/json");
+const ERR_JSON_CT: (header::HeaderName, &str) = (header::CONTENT_TYPE, "application/json");
 
 fn not_found(message: &str) -> Response {
     let body = format!(r#"{{"code":"not_found","message":"{message}"}}"#);
@@ -31,7 +31,8 @@ fn not_found(message: &str) -> Response {
 ///
 /// Two valid names:
 ///   - `manifest.json`            → serves the manifest file
-///   - `tp-mcp-{os}-{arch}`       → serves the matching binary artifact
+///   - `tp-mcp-{os}-{arch}`       → serves the matching MCP binary artifact
+///   - `team-presence-{os}-{arch}` → serves the matching collector CLI artifact
 ///
 /// Anything else → 404 (we don't want this route to act as a general file
 /// browser for the downloads directory).
@@ -51,13 +52,18 @@ pub async fn download(
     match fs::read(&path) {
         Ok(bytes) => {
             let len = bytes.len();
+            let filename = if name.starts_with("team-presence-") {
+                "team-presence"
+            } else {
+                "tp-mcp"
+            };
             Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "application/octet-stream")
                 .header(header::CONTENT_LENGTH, len)
                 .header(
                     header::CONTENT_DISPOSITION,
-                    r#"attachment; filename="tp-mcp""#,
+                    format!(r#"attachment; filename="{filename}""#),
                 )
                 .body(Body::from(bytes))
                 .unwrap()
@@ -100,10 +106,7 @@ pub async fn install_sh(headers: HeaderMap) -> Response {
     let body = install_script::render(&base);
     Response::builder()
         .status(StatusCode::OK)
-        .header(
-            header::CONTENT_TYPE,
-            "text/x-shellscript; charset=utf-8",
-        )
+        .header(header::CONTENT_TYPE, "text/x-shellscript; charset=utf-8")
         .body(Body::from(body))
         .unwrap()
 }

@@ -4,6 +4,7 @@ pub mod comments;
 pub mod downloads;
 pub mod epics;
 pub mod error;
+pub mod mcp;
 pub mod session;
 pub mod sprints;
 pub mod sse;
@@ -93,6 +94,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/sse/room/:session_id", get(sse::room::handler))
         .route("/sse/grid", get(sse::grid::handler))
         .route("/sse/story/:id/activity", get(sse::activity::handler))
+        // Remote MCP (Streamable HTTP). PM tools are hosted on the service;
+        // laptop-local capture remains in the collector CLI.
+        .nest_service("/mcp", mcp::service(state.clone()))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_identity,

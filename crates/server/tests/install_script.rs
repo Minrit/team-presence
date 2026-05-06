@@ -1,7 +1,7 @@
 //! End-to-end test for the install.sh template (plan 010 Unit 3).
 //!
 //! Boots a minimal downloads router on an ephemeral port, writes a fake
-//! manifest + fake tp-mcp binary into a tempdir, then actually executes
+//! manifest + fake team-presence binary into a tempdir, then actually executes
 //! the rendered install.sh via `sh` and checks that the fake binary
 //! lands in the target install dir with the right bytes and permissions.
 //!
@@ -10,12 +10,7 @@
 //! (the script's own `curl ... /manifest.json` and `curl ... /download/...`).
 
 use std::{
-    fs,
-    os::unix::fs::PermissionsExt,
-    path::Path,
-    process::Command,
-    sync::Arc,
-    time::Duration,
+    fs, os::unix::fs::PermissionsExt, path::Path, process::Command, sync::Arc, time::Duration,
 };
 
 use axum::serve;
@@ -50,8 +45,8 @@ fn native_target() -> (&'static str, &'static str) {
 
 fn populate_downloads(dir: &Path) -> Vec<u8> {
     let (os, arch) = native_target();
-    let name = format!("tp-mcp-{os}-{arch}");
-    let bytes: Vec<u8> = b"#!/bin/sh\necho fake-tp-mcp\n".to_vec();
+    let name = format!("team-presence-{os}-{arch}");
+    let bytes: Vec<u8> = b"#!/bin/sh\necho fake-team-presence\n".to_vec();
     fs::write(dir.join(&name), &bytes).unwrap();
     let sha = sha256_hex(&bytes);
     let manifest = format!(
@@ -124,8 +119,12 @@ async fn install_sh_lands_binary_with_correct_bytes() {
         String::from_utf8_lossy(&out.stderr),
     );
 
-    let installed = install_dir.path().join("tp-mcp");
-    assert!(installed.exists(), "tp-mcp not created at {:?}", installed);
+    let installed = install_dir.path().join("team-presence");
+    assert!(
+        installed.exists(),
+        "team-presence not created at {:?}",
+        installed
+    );
     let got = fs::read(&installed).unwrap();
     assert_eq!(got, expected, "binary bytes differ");
     let mode = fs::metadata(&installed).unwrap().permissions().mode();
@@ -142,13 +141,13 @@ async fn install_sh_rejects_checksum_mismatch() {
     // Overwrite manifest.json with a sha of all zeros so the download
     // never matches.
     let (os, arch) = native_target();
-    let bytes = fs::read(dl_dir.path().join(format!("tp-mcp-{os}-{arch}"))).unwrap();
+    let bytes = fs::read(dl_dir.path().join(format!("team-presence-{os}-{arch}"))).unwrap();
     let bogus = format!(
         r#"{{
   "version": "bad",
   "generated_at": "2026-04-18T00:00:00Z",
   "artifacts": [
-    {{ "os": "{os}", "arch": "{arch}", "path": "/download/tp-mcp-{os}-{arch}", "sha256": "{sha}", "size": {size} }}
+    {{ "os": "{os}", "arch": "{arch}", "path": "/download/team-presence-{os}-{arch}", "sha256": "{sha}", "size": {size} }}
   ]
 }}
 "#,
@@ -162,15 +161,18 @@ async fn install_sh_rejects_checksum_mismatch() {
 
     let install_dir = tempdir().unwrap();
     let out = run_script(&script, &base, install_dir.path());
-    assert!(!out.status.success(), "install.sh should fail on sha mismatch");
+    assert!(
+        !out.status.success(),
+        "install.sh should fail on sha mismatch"
+    );
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
         stderr.contains("checksum mismatch"),
         "expected checksum-mismatch diagnostic, got stderr:\n{stderr}"
     );
     assert!(
-        !install_dir.path().join("tp-mcp").exists(),
-        "tp-mcp must not be installed on checksum failure"
+        !install_dir.path().join("team-presence").exists(),
+        "team-presence must not be installed on checksum failure"
     );
 }
 
@@ -185,10 +187,14 @@ async fn install_sh_is_idempotent() {
     let script = install_script::render(&base);
     let install_dir = tempdir().unwrap();
 
-    assert!(run_script(&script, &base, install_dir.path()).status.success());
-    assert!(run_script(&script, &base, install_dir.path()).status.success());
+    assert!(run_script(&script, &base, install_dir.path())
+        .status
+        .success());
+    assert!(run_script(&script, &base, install_dir.path())
+        .status
+        .success());
 
-    let got = fs::read(install_dir.path().join("tp-mcp")).unwrap();
+    let got = fs::read(install_dir.path().join("team-presence")).unwrap();
     assert_eq!(got, expected);
     let leaked: Vec<_> = fs::read_dir(install_dir.path())
         .unwrap()
@@ -196,7 +202,7 @@ async fn install_sh_is_idempotent() {
         .filter(|e| {
             e.file_name()
                 .to_string_lossy()
-                .starts_with("tp-mcp.download.")
+                .starts_with("team-presence.download.")
         })
         .collect();
     assert!(leaked.is_empty(), "leaked tempfiles: {:?}", leaked);

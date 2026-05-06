@@ -1,152 +1,106 @@
-# team-presence — AI-native usage
+# team-presence AI-native usage
 
-team-presence is a live observation dashboard plus an MCP-driven toolchain.
-Agents and humans both write through the same HTTP API — agent writes come
-through Claude Code (or any MCP client) talking to `tp-mcp`; human writes
-come from the browser dashboard. Activity log distinguishes them via
-`actor_type` (`agent` vs `user`).
+team-presence is a hosted service with a browser dashboard, HTTP API, WebSocket
+collector ingest, and a Streamable HTTP MCP endpoint at `/mcp`.
 
-Use whichever is more natural:
+The intended split is:
 
-- **Driving a work session with an AI agent?** Use `/tp-*` skills — they
-  give you the full guided workflow (`/tp-dev-story`, `/tp-groom-ac`, etc.)
-  and their activity shows as `actor_type=agent` on the board.
-- **Quick tweak (rename, edit AC, change priority, post a comment)?**
-  Use the browser. Every field is editable in-place; the only read-only
-  surfaces are the live Claude session streams in Stream / Room / the
-  CurrentStory right pane — those are collector telemetry, not data.
+- Hosted service: PM operations and MCP tools.
+- Laptop collector: login, local hooks, local session capture, diagnostics.
+- Agents and skills: connect to the hosted `/mcp`; they should not spawn a
+  local MCP server in normal use.
 
-## Architecture at a glance
+## Architecture
 
-```
-┌──────────────────┐       stdio JSON-RPC       ┌──────────┐
-│   Claude Code    │ ───────────────────────────│  tp-mcp  │
-│ (/tp-* skills)   │                            │  server  │
-└──────────────────┘                            └────┬─────┘
-                                                     │ HTTP (bearer + X-Actor-Kind:agent)
-                                                     ▼
-┌──────────────────┐       SSE + REST            ┌──────────┐
-│   Browser UI     │ ────────────────────────────│  server  │  ← Axum + Postgres + Redis
-│ (full CRUD, except
-│  live session    │                             └──────────┘
-│  streams)        │
-└──────────────────┘
+```text
+AI agent / skill
+  -> remote MCP over HTTP: https://<server>/mcp
+  -> team-presence server
+  -> Postgres/Redis + activity actor_type=agent
+
+Browser
+  -> same server HTTP API/SSE
+  -> activity actor_type=user
+
+Laptop collector CLI
+  -> login, hooks, OpenCode/Claude capture
+  -> /ws/collector
 ```
 
-## Quick start
-
-### Users (new laptop, you just want to drive team-presence from Claude Code)
+## New Laptop Flow
 
 ```bash
-# One-line install of the tp-mcp binary. Replace the URL with whatever
-# your team's server is reachable at.
-curl -fsSL http://<team-presence-server>/install.sh | sh
-
-# Then in Claude Code, run /tp-connect-machine — the skill walks you
-# through login + hooks + collector daemon.
+curl -fsSL https://<team-presence-server>/install.sh | sh
+team-presence login --server https://<team-presence-server> --email <you>
+team-presence mcp-config
+team-presence install-hooks
+team-presence start --agent opencode
 ```
 
-The installer fetches `tp-mcp-{os}-{arch}` (darwin arm64/x86_64, linux
-arm64/x86_64), verifies sha256 against the server's manifest, and drops
-it at `~/.local/bin/tp-mcp`. Windows is not supported today.
+`install.sh` downloads `team-presence-{os}-{arch}`, verifies sha256 from
+`/download/manifest.json`, and installs it to `~/.local/bin/team-presence` by
+default. macOS and Linux are supported for arm64/aarch64 and x86_64.
 
-### Contributors (you're editing Rust or web source)
+Use the endpoint and Authorization header printed by `team-presence mcp-config`
+in your MCP-capable client. The config contains a Bearer collector token, so
+treat it like a password.
+
+For production hardening, set `TP_MCP_ALLOWED_HOSTS` to a comma-separated list
+of accepted Host values. When it is unset, the hosted `/mcp` endpoint accepts
+non-local service hostnames and relies on Bearer auth.
+
+## Remote MCP Tools
+
+The hosted `/mcp` endpoint exposes server-side PM tools:
+
+- Story: `tp_story_list`, `tp_story_get`, `tp_story_create`,
+  `tp_story_edit`, `tp_story_move_status`, `tp_story_claim`,
+  `tp_story_delete`
+- Acceptance criteria: `tp_ac_add`, `tp_ac_check`, `tp_ac_uncheck`,
+  `tp_ac_edit`, `tp_ac_remove`
+- Comments: `tp_comment_create`, `tp_comment_list`
+- Relations: `tp_relation_block`, `tp_relation_unblock`,
+  `tp_relation_list`
+- Activity: `tp_activity_list`
+- Sprints: `tp_sprint_list`, `tp_sprint_create`, `tp_sprint_edit`
+- Epics: `tp_epic_list`, `tp_epic_create`, `tp_epic_edit`
+- Identity: `tp_whoami`
+
+Collector-local operations are intentionally not MCP tools anymore. Run them
+directly with the CLI:
 
 ```bash
-# 0. Start infra
+team-presence status
+team-presence doctor
+team-presence install-hooks
+team-presence uninstall-hooks
+team-presence mute
+team-presence unmute
+```
+
+## Contributors
+
+```bash
 docker compose up -d postgres redis
+cargo run --bin server
+cd web && pnpm install && pnpm dev
+```
 
-# 1. Build + run the HTTP server
-cargo build
-cargo run --bin server      # :8080
+Build release collector artifacts:
 
-# 2. Build the MCP server binary (debug build, fast)
-cargo build -p team-presence-tp-mcp
-
-# 3. Build the web dashboard
-cd web && pnpm install && pnpm dev    # :5173
-
-# 4. Log in once
-cd ..
-cargo run --bin team-presence -- login --server http://localhost:8080 --email you@team.local
-
-# 5. Launch Claude Code in this repo. It auto-loads .mcp.json and spawns
-#    the tp-mcp server via stdio; /tp-* skills appear in its palette.
-
-# 6. (Optional) produce the release binaries your server will serve to
-#    teammates on /install.sh. Re-run this after every tp-mcp change
-#    that needs to land in production:
+```bash
 bash scripts/build-release-binaries.sh
 ```
 
-## Skills
-
-All live under `.claude/skills/tp-*/SKILL.md`. They call into tp-mcp
-tools with no manual tool wiring needed.
-
-| Skill | Purpose |
-|---|---|
-| `/tp-create-story` | New story, guided field collection + AC loop |
-| `/tp-edit-story` | Diff-style edit (name / priority / points / epic / sprint / branch / pr_ref) |
-| `/tp-move-status` | 5-state workflow move with safety checks |
-| `/tp-groom-ac` | Check / uncheck / edit / add / remove AC |
-| `/tp-dev-story` | "做故事" — claim → AC loop → review → done |
-| `/tp-plan-sprint` | Create sprint, assign stories, capacity check |
-| `/tp-connect-machine` | Onboarding for a new laptop / teammate |
-
-## MCP tool surface
-
-tp-mcp exposes 30 tools (see `cargo run -p team-presence-tp-mcp --bin tp-mcp`
-and send `tools/list`, or check `src/server.rs`). High-level groups:
-
-- **Story**: `tp_story_list / get / create / edit / move_status / claim / delete`
-- **AC**: `tp_ac_add / check / uncheck / edit / remove`
-- **Comment**: `tp_comment_create / list`
-- **Relation**: `tp_relation_block / unblock / list`
-- **Activity**: `tp_activity_list`
-- **Sprint**: `tp_sprint_list / create / edit`
-- **Epic**: `tp_epic_list / create / edit`
-- **Collector**: `tp_collector_status / install_hooks / uninstall_hooks / mute / unmute`
-- **Identity**: `tp_whoami`
-
-Every write carries `X-Actor-Kind: agent`, landing in
-`story_activity.actor_type='agent'` so the audit log cleanly separates
-human vs MCP-driven edits.
-
-## Authentication
-
-tp-mcp reuses the collector's on-disk credentials:
-- **Primary**: macOS Keychain / libsecret / Windows credential manager
-  (service `io.team-presence.collector`).
-- **Fallback**: `~/.config/team-presence/credentials.json` at 0600 in a
-  0700 directory.
-
-A single `team-presence login` call primes both the collector and
-tp-mcp. No separate MCP login flow yet (Phase B: MCP elicitation API).
+The legacy `crates/tp-mcp` stdio bridge remains in the tree for transition and
+comparison, but it is no longer the onboarding or release path.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Every tool errors `NotLoggedIn` | Run `team-presence login` |
-| Claude Code doesn't see `/tp-*` skills | Restart Claude Code so it rereads `.claude/skills/` + `.mcp.json` |
-| MCP spawn fails with `command not found` | `cargo build -p team-presence-tp-mcp` to create `target/debug/tp-mcp` |
-| `tp_story_create` errors `sprint 'foo' not found` | Run `/tp-plan-sprint` or `tp_sprint_list` to confirm names |
-| `actor_type` always `user` instead of `agent` | Upstream curl / browser call — **not** an MCP call. tp-mcp always sends `X-Actor-Kind: agent` |
-| Stream page is empty | Collector not running — `cargo run --bin team-presence -- start` |
-
-## What the browser **does not** do
-
-By design, the dashboard no longer offers:
-
-- Drag-to-move cards (→ `/tp-move-status` / `tp_story_move_status`)
-- "Claim" button (→ `/tp-dev-story` / `tp_story_claim`)
-- AC checkbox click (→ `/tp-groom-ac` / `tp_ac_check`)
-- Comment composer (→ `tp_comment_create`)
-- "New" button (→ `/tp-create-story` / `tp_story_create`)
-- Workspace switcher, Tweaks FAB, notification bell
-
-Everything above is an MCP tool because the right interaction model is:
-a human describes intent, an agent does the ops, the dashboard reflects
-reality. The audit log (actor_type=agent rows) is the chain of
-accountability.
+| MCP client gets 401 | Re-run `team-presence login`, then update the Bearer header from `team-presence mcp-config`. |
+| MCP client cannot reach `/mcp` | Verify the configured URL is the hosted server URL plus `/mcp`, not a local `tp-mcp` command. |
+| Stream page is empty | Run `team-presence start --agent opencode` and check `team-presence doctor`. |
+| OpenCode DB unreadable | Follow the `fix:` line from `team-presence doctor`. |
+| macOS blocks the downloaded binary | Run `xattr -d com.apple.quarantine ~/.local/bin/team-presence` once. |

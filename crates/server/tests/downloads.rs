@@ -66,13 +66,13 @@ async fn artifact_returns_bytes_and_length() {
     let tmp = tempfile::tempdir().unwrap();
     // Pretend binary: 42 bytes of deterministic junk.
     let bytes: Vec<u8> = (0u8..42).collect();
-    fs::write(tmp.path().join("tp-mcp-darwin-aarch64"), &bytes).unwrap();
+    fs::write(tmp.path().join("team-presence-darwin-aarch64"), &bytes).unwrap();
 
     let app = make_router(tmp.path().to_path_buf());
     let res = app
         .oneshot(
             Request::builder()
-                .uri("/download/tp-mcp-darwin-aarch64")
+                .uri("/download/team-presence-darwin-aarch64")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -93,7 +93,27 @@ async fn artifact_returns_bytes_and_length() {
         .unwrap()
         .to_str()
         .unwrap();
-    assert!(cd.contains("tp-mcp"), "content-disposition: {cd}");
+    assert!(cd.contains("team-presence"), "content-disposition: {cd}");
+    assert_eq!(body_bytes(res).await, bytes);
+}
+
+#[tokio::test]
+async fn legacy_tp_mcp_artifacts_remain_servable_for_compatibility() {
+    let tmp = tempfile::tempdir().unwrap();
+    let bytes: Vec<u8> = (42u8..84).collect();
+    fs::write(tmp.path().join("tp-mcp-linux-x86_64"), &bytes).unwrap();
+
+    let app = make_router(tmp.path().to_path_buf());
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/download/tp-mcp-linux-x86_64")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(body_bytes(res).await, bytes);
 }
 
@@ -149,12 +169,7 @@ async fn install_sh_injects_server_base_from_host() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let ct = res
-        .headers()
-        .get("content-type")
-        .unwrap()
-        .to_str()
-        .unwrap();
+    let ct = res.headers().get("content-type").unwrap().to_str().unwrap();
     assert!(
         ct.starts_with("text/x-shellscript") || ct.starts_with("text/plain"),
         "content-type was {ct}"
@@ -188,5 +203,8 @@ async fn install_sh_respects_x_forwarded_proto() {
         body.contains("https://tp.example.com"),
         "expected https URL, got:\n{body}"
     );
-    assert!(!body.contains("http://tp.example.com\n"), "leaked http scheme");
+    assert!(
+        !body.contains("http://tp.example.com\n"),
+        "leaked http scheme"
+    );
 }

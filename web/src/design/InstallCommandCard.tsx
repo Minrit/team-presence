@@ -13,8 +13,8 @@ import { Icon } from './Icon'
  * staging, and prod all produce the right command without config.
  */
 export function InstallCommandCard({
-  title = 'Install tp-mcp on this laptop',
-  hint = 'Runs the official installer served by this team-presence server. Verifies sha256, drops tp-mcp at ~/.local/bin. macOS + Linux, arm64 + x86_64.',
+  title = 'Install team-presence collector',
+  hint = 'Runs the official installer served by this team-presence server. Verifies sha256, drops team-presence at ~/.local/bin, then use /mcp as the remote MCP endpoint.',
 }: {
   title?: string
   hint?: string

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-release-binaries.sh — produce tp-mcp release artifacts for the server
+# build-release-binaries.sh — produce team-presence collector release artifacts for the server
 # to expose at `/download/*` and `/install.sh`.
 #
 # Per plan 010 Unit 1:
@@ -11,7 +11,7 @@
 #     deployment pipeline.
 #   - Output lives under `team-presence/downloads/` and is .gitignored
 #     except for .gitkeep.
-#   - manifest.json is rebuilt from every tp-mcp-* file the script finds
+#   - manifest.json is rebuilt from every team-presence-* file the script finds
 #     under downloads/ at the end, so two runs on different machines can
 #     each contribute their artifact and the final manifest covers both.
 #
@@ -148,20 +148,20 @@ build_artifact() {
         extra_args=(--target "$triple")
     fi
 
-    echo "==> building tp-mcp ($kind $os-$arch, triple=$triple)"
-    # cargo build --release -p team-presence-tp-mcp [--target <triple>]
+    echo "==> building team-presence ($kind $os-$arch, triple=$triple)"
+    # cargo build --release -p team-presence-collector [--target <triple>]
     # NOTE: `${arr[@]+"${arr[@]}"}` safely expands to nothing under `set -u`
     # when the array is empty (native builds have no extra flags).
-    if ! cargo build --release -p team-presence-tp-mcp ${extra_args[@]+"${extra_args[@]}"}; then
+    if ! cargo build --release -p team-presence-collector ${extra_args[@]+"${extra_args[@]}"}; then
         echo "error: cargo build failed for $os-$arch" >&2
         return 1
     fi
 
     local src
     if [ "$kind" = "native" ]; then
-        src="$ROOT/target/release/tp-mcp"
+        src="$ROOT/target/release/team-presence"
     else
-        src="$ROOT/target/$triple/release/tp-mcp"
+        src="$ROOT/target/$triple/release/team-presence"
     fi
 
     if [ ! -f "$src" ]; then
@@ -169,7 +169,7 @@ build_artifact() {
         return 1
     fi
 
-    local dst="$DOWNLOADS/tp-mcp-$os-$arch"
+    local dst="$DOWNLOADS/team-presence-$os-$arch"
     # Atomic replace so a concurrent server read never sees a half-written file.
     cp -f "$src" "$dst.tmp"
     chmod +x "$dst.tmp"
@@ -215,11 +215,11 @@ manifest_tmp="$DOWNLOADS/manifest.json.tmp"
     printf '  "generated_at": "%s",\n' "$generated_at"
     printf '  "artifacts": [\n'
     first=1
-    # Iterate deterministically (sort) over every tp-mcp-* file in downloads/.
+    # Iterate deterministically (sort) over every team-presence-* file in downloads/.
     while IFS= read -r -d '' f; do
         name="$(basename "$f")"
-        # name form: tp-mcp-<os>-<arch>
-        tail="${name#tp-mcp-}"
+        # name form: team-presence-<os>-<arch>
+        tail="${name#team-presence-}"
         art_os="${tail%%-*}"
         art_arch="${tail#*-}"
         case "$art_os" in darwin|linux) ;; *) continue ;; esac
@@ -232,7 +232,7 @@ manifest_tmp="$DOWNLOADS/manifest.json.tmp"
         first=0
         printf '    { "os": "%s", "arch": "%s", "path": "/download/%s", "sha256": "%s", "size": %s }' \
             "$art_os" "$art_arch" "$name" "$sha" "$size"
-    done < <(find "$DOWNLOADS" -maxdepth 1 -type f -name 'tp-mcp-*' -print0 | sort -z)
+    done < <(find "$DOWNLOADS" -maxdepth 1 -type f -name 'team-presence-*' -print0 | sort -z)
     printf '\n  ]\n}\n'
 } > "$manifest_tmp"
 mv -f "$manifest_tmp" "$DOWNLOADS/manifest.json"
@@ -241,4 +241,4 @@ echo
 echo "manifest: $DOWNLOADS/manifest.json"
 echo "version:  $version"
 echo "artifacts present:"
-find "$DOWNLOADS" -maxdepth 1 -type f -name 'tp-mcp-*' -print | sort
+find "$DOWNLOADS" -maxdepth 1 -type f -name 'team-presence-*' -print | sort

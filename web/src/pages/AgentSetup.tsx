@@ -62,8 +62,9 @@ export default function AgentSetup() {
             This page is the canonical self-configuration guide. Any AI can
             <span className="mono"> fetch /agent-setup.md </span> (plain
             markdown, no JS), follow the steps, and end up wired into the
-            team-presence MCP + skill stack. Share the URL or download the
-            file and paste it into another agent&rsquo;s system.
+            hosted team-presence MCP endpoint plus the local collector CLI.
+            Share the URL or download the file and paste it into another
+            agent&rsquo;s system.
           </div>
         </div>
         <Button

@@ -14,4 +14,5 @@ build/
 # Release artifacts built by scripts/build-release-binaries.sh.
 # The directory itself is tracked via downloads/.gitkeep.
 downloads/tp-mcp-*
+downloads/team-presence-*
 downloads/manifest.json

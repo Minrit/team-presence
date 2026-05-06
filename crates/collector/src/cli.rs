@@ -29,6 +29,10 @@ pub enum Command {
     /// Run local diagnostics (OpenCode DB + mode hints).
     Doctor,
 
+    /// Print the remote MCP endpoint and Bearer header for clients that need
+    /// manual configuration.
+    McpConfig,
+
     /// Pause content streaming (heartbeat + session metadata still flow).
     Mute,
 

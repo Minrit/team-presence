@@ -15,6 +15,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Start(args) => cmd_start(args).await?,
         Command::Status => cmd_status()?,
         Command::Doctor => cmd_doctor()?,
+        Command::McpConfig => cmd_mcp_config()?,
         Command::Mute => {
             mute::mute()?;
             println!("muted — content frames suppressed until `team-presence unmute`.");
@@ -141,6 +142,33 @@ fn cmd_doctor() -> anyhow::Result<()> {
         std::process::exit(2);
     }
     println!("doctor: ok");
+    Ok(())
+}
+
+fn cmd_mcp_config() -> anyhow::Result<()> {
+    let creds = credentials::load()?.ok_or_else(|| {
+        anyhow::anyhow!(
+            "no credentials — run `team-presence login --server <url> --email <you>` first"
+        )
+    })?;
+    let endpoint = format!("{}/mcp", creds.server.trim_end_matches('/'));
+    println!("remote_mcp_endpoint: {endpoint}");
+    println!("authorization_header: Bearer {}", creds.token);
+    println!();
+    println!("generic_json:");
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "mcpServers": {
+                "team-presence": {
+                    "url": endpoint,
+                    "headers": {
+                        "Authorization": format!("Bearer {}", creds.token)
+                    }
+                }
+            }
+        }))?
+    );
     Ok(())
 }
 

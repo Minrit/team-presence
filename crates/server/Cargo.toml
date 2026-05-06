@@ -33,6 +33,8 @@ tokio-stream.workspace = true
 futures-util.workspace = true
 regex.workspace = true
 once_cell.workspace = true
+rmcp = { version = "1.5", features = ["server", "macros", "schemars", "transport-streamable-http-server"] }
+tokio-util = "0.7"
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -1,128 +1,163 @@
 ---
 name: tp-connect-machine
-description: Wire a new laptop into team-presence — collect user's email + password, log in via MCP, install Claude Code hooks, start the collector daemon (OpenCode mode), verify the session shows up in Stream. Use on first-run, when a teammate asks "how do I connect", or when the user says "/connect", "接入我的电脑", "connect my machine". Drives tp_collector_login → tp_collector_install_hooks → (human runs `team-presence start --agent opencode`) → tp_collector_status/tp_collector_doctor.
+description: Wire a laptop or agent into hosted team-presence. Use on first-run, when MCP returns 401/unauthorized, when a teammate asks "how do I connect", or when the user says "/connect", "接入我的电脑", "connect my machine". Guides install.sh -> team-presence login -> team-presence mcp-config -> remote /mcp client config -> optional local collector start.
 ---
 
 # tp-connect-machine
 
-Step-by-step onboarding for a fresh laptop. Each step either calls an
-MCP tool (preferred) or asks the user to run one shell command.
+Use this when the user or agent cannot use team-presence MCP yet, especially
+when direct access to `/mcp` returns 401/unauthorized.
 
-## 0. Pre-flight
+Important: `/mcp` is protected by Bearer auth. A 401 from a browser or an MCP
+client is expected until the client is configured with a token. The login flow
+happens through the local `team-presence` CLI, not through an MCP tool.
 
-Run `tp_collector_status`. Branch:
+## 0. Identify the Server
 
-- **`status=logged_in`** — skip to step 3. Credentials already saved.
-- **`status=logged_out`** — proceed to step 1 (login).
-- **error** — surface the reason; most often the binary isn't built.
-  Ask the user to run `cargo build -p team-presence-tp-mcp` in the
-  repo root and restart their MCP client.
+Ask for the team-presence server URL if it is not obvious.
 
-## 1. Collect identity
+Default examples:
 
-**Ask the user two questions, one at a time**:
+- Production: `https://rancher.zstack.io`
+- Local dev: `http://localhost:8080`
 
-1. "What's your team-presence server URL?" (default: `http://localhost:8080` for local dev)
-2. "What's your email for team-presence?" (if they don't know, try the
-    one they'd use for git: `git config user.email`)
-3. "What's the password? (Claude will pass this through to the login
-    tool — don't paste it anywhere else in the chat.)"
+Tell the user that the canonical raw guide is:
 
-Do **not** echo the password back in the transcript. When you call the
-tool, avoid quoting the password value in your own narration.
+```bash
+curl -fsSL <server>/agent-setup.md
+```
 
-Optional fourth question:
+## 1. Install the Local Collector CLI
 
-4. "Any friendly name for this laptop? (default: current hostname)"
+Ask the user to run:
+
+```bash
+curl -fsSL <server>/install.sh | sh
+```
+
+If `~/.local/bin` is not on PATH, ask them to add:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Verify:
+
+```bash
+team-presence --help
+```
+
+Expected: the command list includes `login`, `mcp-config`, `status`,
+`doctor`, `install-hooks`, and `start`.
 
 ## 2. Login
 
-Call `tp_collector_login` with `{server, email, password, collector_name?}`.
-
-On success the tool returns:
-
-```
-logged in as <Display Name> <email>
-collector_name=<hostname-or-chosen>
-collector_id=<uuid>
-credentials saved — restart your MCP client so tp-mcp picks them up.
-```
-
-**Important:** tp-mcp reads credentials at process start. For the
-write tools to become usable, the MCP client (Claude Code, Codex, …)
-needs to restart tp-mcp. Two options:
-
-- Ask the user to restart the MCP client.
-- Or proceed with step 3 (install-hooks, which doesn't require tp-mcp
-  to have credentials — it runs in the collector crate directly), then
-  restart when the user is ready.
-
-If the login fails with 401 → wrong email/password. Ask again.
-If it fails with a connection error → server unreachable; fix the URL.
-
-## 3. Install Claude Code hooks
-
-Call `tp_collector_install_hooks` with `force: false` (default).
-
-Expected: `installed=[...session-start.sh, ...stop.sh]`. If you see
-`skipped=[...]` both files, hooks are already present from an earlier
-run — that's fine, no action needed.
-
-## 4. Launch the collector daemon (OpenCode)
-
-The collector is a long-running process that tails Claude Code
-transcripts and streams frames to the server. MCP cannot keep a
-process alive across calls, so **ask the user to run one shell
-command in a persistent terminal**:
+Ask for the email. Ask for the password only when the user is ready to run the
+login command. Do not echo the password back.
 
 ```bash
-cd $TP_REPO   # or the absolute path to the team-presence repo
-cargo run --bin team-presence -- start --agent opencode
+team-presence login --server <server> --email <you>
 ```
 
-They should see in stderr:
+If login fails with 401, the email or password is wrong. Ask again.
 
+If login succeeds, credentials are saved locally in the OS keyring with a 0600
+file fallback.
+
+## 3. Configure Remote MCP
+
+Ask the user to run:
+
+```bash
+team-presence mcp-config
 ```
-INFO listening for hook events
-INFO collector connected
+
+It prints:
+
+- `remote_mcp_endpoint`, for example `<server>/mcp`
+- `authorization_header`, for example `Bearer tp_...`
+- a generic JSON config shape
+
+Tell the user to configure their MCP client with the remote endpoint and the
+Authorization header. Do not configure a local `tp-mcp` stdio command for
+normal use.
+
+Generic shape:
+
+```json
+{
+  "mcpServers": {
+    "team-presence": {
+      "url": "<server>/mcp",
+      "headers": {
+        "Authorization": "Bearer tp_..."
+      }
+    }
+  }
+}
 ```
 
-Wait for the user to confirm "daemon running" / "I see 'collector
-connected'" before continuing.
+Client config formats differ. Keep the URL and Authorization header, but adapt
+the surrounding JSON to the client.
 
-## 5. Verify
+After changing MCP config, reload or restart the MCP client so it reconnects.
 
-Ask the user to open `http://localhost:5173/stream` (or the appropriate
-team-presence web host). Within ~10 seconds of them using their Claude
-Code session (the `Stop` hook fires on each assistant turn) they should
-see their terminal tile appear.
+## 4. Verify MCP
 
-If nothing appears after 30 seconds:
-- `tp_collector_status` — confirm still logged in + not muted + `agent_mode=opencode`.
-- `tp_collector_doctor` — confirm `opencode_db_state=readable` and check `fix=` guidance when degraded.
-- Check the `team-presence start` stderr for errors.
-- `ls ~/.claude/hooks/team-presence-*.sh` — confirm hooks are present.
-- Tell them to restart their Claude Code client — existing sessions
-  don't re-fire `SessionStart` hooks.
+After the client reloads, run `tools/list`.
 
-## 6. Wrap-up
+Expected PM tools include:
 
-Congratulate the user. Tell them:
+- `tp_whoami`
+- `tp_story_list`, `tp_story_get`, `tp_story_create`, `tp_story_edit`
+- `tp_ac_add`, `tp_ac_check`, `tp_ac_uncheck`, `tp_ac_edit`, `tp_ac_remove`
+- `tp_comment_create`, `tp_comment_list`
+- `tp_relation_block`, `tp_relation_unblock`, `tp_relation_list`
+- `tp_activity_list`
+- `tp_sprint_list`, `tp_sprint_create`, `tp_sprint_edit`
+- `tp_epic_list`, `tp_epic_create`, `tp_epic_edit`
 
-- `/tp-dev-story` is the main workflow skill — use it to work a story
-  end-to-end.
-- `tp_collector_mute` / `tp_collector_unmute` when they want a private
-  session.
-- The board at `http://localhost:5173` is **read-only** — all writes
-  flow through MCP tools; they don't need to learn "click X to do Y".
+Collector-local commands should not appear as MCP tools. Run them through the
+CLI instead.
+
+## 5. Start Local Capture
+
+OpenCode:
+
+```bash
+team-presence start --agent opencode
+```
+
+Claude Code hooks:
+
+```bash
+team-presence install-hooks
+team-presence start --agent claude_code
+```
+
+Diagnostics:
+
+```bash
+team-presence status
+team-presence doctor
+```
+
+## Failure Modes
+
+- Browser opens `/mcp` and sees unauthorized: expected. Configure an MCP client
+  with the Bearer header from `team-presence mcp-config`.
+- MCP client gets 401: re-run `team-presence login`, then update the client
+  Authorization header from `team-presence mcp-config`.
+- Client still tries to spawn `tp-mcp`: remove old stdio config and configure
+  the hosted `<server>/mcp` endpoint.
+- `team-presence` command not found: add `~/.local/bin` to PATH or rerun
+  install with `TP_INSTALL_DIR` set to a PATH directory.
+- Stream page is empty: start the collector and run `team-presence doctor`.
 
 ## Guardrails
 
-- Never invent an email or password. If the user won't provide them,
-  stop and ask again.
-- Never call `tp_collector_login` without explicit user confirmation
-  that they want their credentials saved on this machine.
-- Never call `tp_collector_uninstall_hooks` during onboarding — that's
-  the cleanup flow, not setup.
-- Never start the collector daemon yourself via `Bash` — it needs to
-  outlive your agent turn. Always hand off to the user's terminal.
+- Never invent an email or password.
+- Never paste the user's password back into chat.
+- Never ask the user to configure local `tp-mcp` for normal use.
+- Never expose the Bearer token in screenshots or shared chat unless the user
+  explicitly understands it is a secret.

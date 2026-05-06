@@ -12,8 +12,10 @@ server. Goal: produce one well-formed story that's immediately actionable.
 
 1. Ensure the MCP server is loaded (tools prefixed `tp_*` visible).
 2. Silently call `tp_whoami` to confirm login. If it errors with
-   "NotLoggedIn", ask the user to run `team-presence login --server <url>
-   --email <them>` and stop this skill.
+   401/unauthorized, tell the user to run `/tp-connect-machine` or:
+   `team-presence login --server <url> --email <them>`, then
+   `team-presence mcp-config`, update the remote MCP Authorization header,
+   and reload the MCP client. Stop this skill until MCP reconnects.
 
 ## Gather story fields
 

@@ -3,6 +3,10 @@
 This server hosts team-presence MCP at `/mcp`. Do not start a local `tp-mcp`
 stdio process for normal use.
 
+If opening `/mcp` directly returns 401/unauthorized, that is expected. `/mcp`
+is not a web page; it is the MCP transport endpoint and requires the
+Authorization header printed by `team-presence mcp-config`.
+
 ## 1. Install the local collector CLI
 
 ```bash

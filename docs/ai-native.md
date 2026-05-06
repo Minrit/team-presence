@@ -45,6 +45,12 @@ Use the endpoint and Authorization header printed by `team-presence mcp-config`
 in your MCP-capable client. The config contains a Bearer collector token, so
 treat it like a password.
 
+If a browser or raw HTTP client opens `/mcp` without credentials and sees
+401/unauthorized, the service is behaving correctly. Configure an MCP client
+with the remote endpoint and the Authorization header from
+`team-presence mcp-config`. Agents that have this repo's skills should run
+`/tp-connect-machine` when they hit that state.
+
 For production hardening, set `TP_MCP_ALLOWED_HOSTS` to a comma-separated list
 of accepted Host values. When it is unset, the hosted `/mcp` endpoint accepts
 non-local service hostnames and relies on Bearer auth.

@@ -6,7 +6,7 @@ pub struct AppState {
     pub db: PgPool,
     pub redis: redis::Client,
     pub jwt: Arc<JwtConfig>,
-    /// Directory that holds the tp-mcp release artifacts + `manifest.json`
+    /// Directory that holds collector release artifacts + `manifest.json`
     /// served at `/download/*`. Defaults to `./downloads` relative to the
     /// server's CWD; override via `TP_DOWNLOADS_DIR`. See plan 010.
     pub downloads_dir: Arc<PathBuf>,

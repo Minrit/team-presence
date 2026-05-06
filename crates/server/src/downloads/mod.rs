@@ -26,7 +26,9 @@ pub mod install_script;
 use crate::state::AppState;
 
 /// Minimum state the download handlers need: a path to a directory
-/// containing `manifest.json` and the `tp-mcp-{os}-{arch}` artifacts.
+/// containing `manifest.json` and the `team-presence-{os}-{arch}` collector
+/// artifacts. Legacy `tp-mcp-{os}-{arch}` downloads may still be served for
+/// compatibility, but they are no longer the onboarding path.
 #[derive(Clone)]
 pub struct DownloadsState {
     pub dir: Arc<PathBuf>,

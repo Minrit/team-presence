@@ -5,6 +5,13 @@ description: Create a new sprint, set its window, and assign stories to it. Use 
 
 # tp-plan-sprint
 
+## Pre-flight
+
+Confirm the MCP tools respond (`tp_whoami`). If this returns
+401/unauthorized or the MCP client is not configured, stop and run
+`/tp-connect-machine` first. Do not fall back to a local `tp-mcp` stdio
+command.
+
 ## Create
 
 1. Ask for sprint **name** (default: "S<N+1>" where N comes from the

@@ -7,6 +7,10 @@ description: Move a story between the 5 workflow statuses (todo / in_progress / 
 
 ## Steps
 
+0. Confirm the MCP tools respond (`tp_whoami`). If this returns
+   401/unauthorized or the MCP client is not configured, stop and run
+   `/tp-connect-machine` first. Do not fall back to a local `tp-mcp`
+   stdio command.
 1. Identify the story (id, URL, or "this one" referring to the current
    /story/:id context).
 2. Present the current status and the 5 options:

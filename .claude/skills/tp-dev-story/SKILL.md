@@ -12,6 +12,9 @@ click-ops.
 ## Pre-flight
 
 1. Confirm the MCP tools respond (`tp_whoami`).
+   If this returns 401/unauthorized or the MCP client is not configured,
+   stop and run `/tp-connect-machine` first. Do not fall back to a local
+   `tp-mcp` stdio command.
 2. Confirm a story is selected. Accept id / URL / "the top backlog one"
    → in which case call `tp_story_list(sprint="latest", status="todo")`
    and pick the highest priority (P1 > P2 > P3 > P4).

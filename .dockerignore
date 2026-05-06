@@ -7,8 +7,9 @@ web/dist/
 .github/
 .claude/
 docs/
-downloads/tp-mcp-*
+downloads/*
+!downloads/.gitkeep
 !downloads/manifest.json
-!downloads/tp-mcp-*-*
+!downloads/team-presence-*
 .DS_Store
 *.log

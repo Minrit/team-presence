@@ -7,6 +7,10 @@ description: Review, check off, edit, add, or remove acceptance criteria on a st
 
 ## Steps
 
+0. Confirm the MCP tools respond (`tp_whoami`). If this returns
+   401/unauthorized or the MCP client is not configured, stop and run
+   `/tp-connect-machine` first. Do not fall back to a local `tp-mcp`
+   stdio command.
 1. Resolve the target story (id / URL / "this one").
 2. `tp_story_get` to pull the current AC array. Present them with
    1-based numbering for humans (MCP uses 0-based indexes):

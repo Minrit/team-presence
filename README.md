@@ -40,6 +40,11 @@ Configure your MCP-capable client with the endpoint/header printed by
 `team-presence mcp-config`. Do not configure a local `tp-mcp` stdio process for
 normal use.
 
+If opening `/mcp` directly in a browser returns 401/unauthorized, that is
+expected. `/mcp` is an MCP transport endpoint and requires the Authorization
+header printed by `team-presence mcp-config`. Agents should use the
+`/tp-connect-machine` skill or fetch `/agent-setup.md` for the login flow.
+
 Set `TP_MCP_ALLOWED_HOSTS=example.com,example.com:443` in deployments that want
 an explicit MCP Host allowlist. If unset, `/mcp` accepts hosted service
 hostnames and relies on Bearer auth.
@@ -82,9 +87,9 @@ The public installer now downloads the collector CLI artifact named
 bash scripts/build-release-binaries.sh --native-only
 ```
 
-The legacy `crates/tp-mcp` stdio binary is retained only for transition and
-development comparison. New onboarding and release builds should use the
-hosted `/mcp` endpoint plus the `team-presence` collector CLI.
+The legacy `crates/tp-mcp` stdio binary is retained only for transition tests
+and development comparison. New onboarding and release builds use the hosted
+`/mcp` endpoint plus the `team-presence` collector CLI.
 
 ## Layout
 

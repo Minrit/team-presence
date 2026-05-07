@@ -5,8 +5,8 @@
 //!
 //! - `GET /download/manifest.json` — list of available artifacts + sha256
 //! - `GET /download/{artifact}`    — the binary itself (regex-guarded)
-//! - `GET /install.sh`             — POSIX shell installer, server URL
-//!                                   injected from the request `Host`.
+//! - `GET /install.sh`             — POSIX shell installer, server URL injected
+//!   from the request `Host`.
 //!
 //! None of these go through the auth middleware: the artifacts are
 //! compile-outputs of a public repo, and gating them would kill the

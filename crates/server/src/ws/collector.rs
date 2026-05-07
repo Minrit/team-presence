@@ -43,10 +43,7 @@ struct CollectorAuth {
     token_sha256: String,
 }
 
-async fn authenticate(
-    state: &AppState,
-    headers: &HeaderMap,
-) -> Result<CollectorAuth, StatusCode> {
+async fn authenticate(state: &AppState, headers: &HeaderMap) -> Result<CollectorAuth, StatusCode> {
     let bearer = headers
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())

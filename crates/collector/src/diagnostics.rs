@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
+use team_presence_shared_types::AgentKind;
 
-use crate::{config, credentials, mute};
+use crate::{capture::codex::default_state_db_path, config, credentials, mute};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenCodeDbState {
@@ -11,6 +12,12 @@ pub enum OpenCodeDbState {
     NotAFile,
     PermissionDenied,
     SqliteOpenFailed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimestampUnit {
+    Seconds,
+    Millis,
 }
 
 impl OpenCodeDbState {
@@ -24,21 +31,21 @@ impl OpenCodeDbState {
         }
     }
 
-    pub fn hint(self, path: &Path) -> Option<String> {
+    pub fn hint(self, label: &str, path: &Path) -> Option<String> {
         let p = path.display();
         match self {
             Self::Readable => None,
             Self::Missing => Some(format!(
-                "opencode db not found at {p}; start OpenCode once, then re-run status"
+                "{label} not found at {p}; start the matching agent once, then re-run status"
             )),
             Self::NotAFile => Some(format!(
-                "path {p} is not a file; remove/fix it so collector can read sqlite"
+                "path {p} is not a file; remove/fix it so collector can read {label}"
             )),
             Self::PermissionDenied => Some(format!(
                 "permission denied reading {p}; adjust file permissions for current user"
             )),
             Self::SqliteOpenFailed => Some(format!(
-                "cannot open sqlite at {p}; verify it is a healthy opencode.db"
+                "cannot open sqlite at {p}; verify it is a healthy {label}"
             )),
         }
     }
@@ -46,6 +53,7 @@ impl OpenCodeDbState {
 
 #[derive(Debug, Clone)]
 pub struct OpenCodeDbHealth {
+    pub label: &'static str,
     pub path: PathBuf,
     pub state: OpenCodeDbState,
     pub last_event_at: Option<DateTime<Utc>>,
@@ -58,6 +66,7 @@ pub struct CollectorStatusReport {
     pub user_email: Option<String>,
     pub collector_name: Option<String>,
     pub collector_id: Option<String>,
+    pub agent_kind: AgentKind,
     pub muted: bool,
     pub config_dir: PathBuf,
     pub fallback_path: PathBuf,
@@ -67,7 +76,8 @@ pub struct CollectorStatusReport {
 
 pub fn collect_status() -> anyhow::Result<CollectorStatusReport> {
     let creds = credentials::load()?;
-    let opencode_db = inspect_opencode_db();
+    let agent_kind = config::load_agent_kind();
+    let opencode_db = inspect_capture_source(agent_kind);
 
     Ok(CollectorStatusReport {
         logged_in: creds.is_some(),
@@ -75,6 +85,7 @@ pub fn collect_status() -> anyhow::Result<CollectorStatusReport> {
         user_email: creds.as_ref().map(|c| c.user_email.clone()),
         collector_name: creds.as_ref().map(|c| c.collector_name.clone()),
         collector_id: creds.as_ref().map(|c| c.collector_id.to_string()),
+        agent_kind,
         muted: mute::is_muted(),
         config_dir: config::config_dir()?,
         fallback_path: credentials::fallback_path()?,
@@ -83,15 +94,43 @@ pub fn collect_status() -> anyhow::Result<CollectorStatusReport> {
     })
 }
 
-fn inspect_opencode_db() -> OpenCodeDbHealth {
-    let path = opencode_db_path();
+fn inspect_capture_source(agent_kind: AgentKind) -> OpenCodeDbHealth {
+    match agent_kind {
+        AgentKind::Codex => inspect_sqlite_source(
+            "codex_state_db",
+            default_state_db_path(),
+            "SELECT MAX(updated_at) FROM threads",
+            TimestampUnit::Seconds,
+        ),
+        AgentKind::OpenCode => inspect_sqlite_source(
+            "opencode_db",
+            opencode_db_path(),
+            "SELECT MAX(time_updated) FROM part",
+            TimestampUnit::Millis,
+        ),
+        _ => OpenCodeDbHealth {
+            label: "hook_socket",
+            path: config::hook_socket_path(),
+            state: OpenCodeDbState::Readable,
+            last_event_at: None,
+        },
+    }
+}
+
+fn inspect_sqlite_source(
+    label: &'static str,
+    path: PathBuf,
+    last_event_query: &str,
+    timestamp_unit: TimestampUnit,
+) -> OpenCodeDbHealth {
     let state = opencode_db_state(&path);
     let last_event_at = if matches!(state, OpenCodeDbState::Readable) {
-        read_last_event_ts(&path)
+        read_last_event_ts(&path, last_event_query, timestamp_unit)
     } else {
         None
     };
     OpenCodeDbHealth {
+        label,
         path,
         state,
         last_event_at,
@@ -130,14 +169,23 @@ fn opencode_db_state(path: &Path) -> OpenCodeDbState {
     }
 }
 
-fn read_last_event_ts(path: &Path) -> Option<DateTime<Utc>> {
-    let conn = rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
-        .ok()?;
-    let ts_ms: Option<i64> = conn
-        .query_row("SELECT MAX(time_updated) FROM part", [], |row| row.get(0))
-        .ok()
-        .flatten();
-    ts_ms.and_then(ts_from_millis)
+fn read_last_event_ts(
+    path: &Path,
+    query: &str,
+    timestamp_unit: TimestampUnit,
+) -> Option<DateTime<Utc>> {
+    let conn =
+        rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .ok()?;
+    let ts: Option<i64> = conn.query_row(query, [], |row| row.get(0)).ok().flatten();
+    match timestamp_unit {
+        TimestampUnit::Seconds => ts.and_then(ts_from_seconds),
+        TimestampUnit::Millis => ts.and_then(ts_from_millis),
+    }
+}
+
+fn ts_from_seconds(ts_s: i64) -> Option<DateTime<Utc>> {
+    chrono::TimeZone::timestamp_opt(&Utc, ts_s, 0).single()
 }
 
 fn ts_from_millis(ts_ms: i64) -> Option<DateTime<Utc>> {
@@ -158,5 +206,11 @@ mod tests {
     fn db_state_not_a_file_for_directory_path() {
         let temp = tempfile::tempdir().expect("tempdir");
         assert_eq!(opencode_db_state(temp.path()), OpenCodeDbState::NotAFile);
+    }
+
+    #[test]
+    fn seconds_timestamp_converts_to_utc() {
+        let ts = ts_from_seconds(1_778_137_000).expect("timestamp");
+        assert_eq!(ts.timestamp(), 1_778_137_000);
     }
 }

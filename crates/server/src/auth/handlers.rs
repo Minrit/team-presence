@@ -107,10 +107,11 @@ pub async fn refresh(
         row.ok_or(AppError::Unauthorized)?;
 
     // Rotate refresh: revoke the old session row, issue a new one via issue_session.
-    let _ = sqlx::query("UPDATE user_sessions SET revoked_at = now() WHERE refresh_token_sha256 = $1")
-        .bind(&sha)
-        .execute(&state.db)
-        .await;
+    let _ =
+        sqlx::query("UPDATE user_sessions SET revoked_at = now() WHERE refresh_token_sha256 = $1")
+            .bind(&sha)
+            .execute(&state.db)
+            .await;
 
     issue_session(
         &state,
@@ -125,10 +126,7 @@ pub async fn refresh(
     .await
 }
 
-pub async fn logout(
-    State(state): State<AppState>,
-    jar: CookieJar,
-) -> Result<CookieJar, AppError> {
+pub async fn logout(State(state): State<AppState>, jar: CookieJar) -> Result<CookieJar, AppError> {
     if let Some(cookie) = jar.get(REFRESH_COOKIE_NAME) {
         let sha = sha256_hex(cookie.value());
         let _ = sqlx::query(
@@ -148,12 +146,11 @@ pub async fn me(
     State(state): State<AppState>,
     Extension(identity): Extension<Identity>,
 ) -> Result<Json<UserPublic>, AppError> {
-    let row: Option<UserPublic> = sqlx::query_as(
-        "SELECT id, email, display_name, created_at FROM users WHERE id = $1",
-    )
-    .bind(identity.user_id)
-    .fetch_optional(&state.db)
-    .await?;
+    let row: Option<UserPublic> =
+        sqlx::query_as("SELECT id, email, display_name, created_at FROM users WHERE id = $1")
+            .bind(identity.user_id)
+            .fetch_optional(&state.db)
+            .await?;
     row.map(Json).ok_or(AppError::NotFound)
 }
 

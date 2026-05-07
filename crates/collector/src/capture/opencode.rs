@@ -181,7 +181,11 @@ impl OpenCodeTailer {
         if !self.source_sessions.contains_key(source_session_id) {
             let tp_session_id = Uuid::new_v4();
             let cwd = lookup_session_cwd(conn, source_session_id)
-                .or_else(|| std::env::current_dir().ok().map(|p| p.display().to_string()))
+                .or_else(|| {
+                    std::env::current_dir()
+                        .ok()
+                        .map(|p| p.display().to_string())
+                })
                 .unwrap_or_else(|| "?".to_string());
 
             self.source_sessions.insert(
@@ -369,7 +373,10 @@ fn has_encrypted_reasoning(v: &serde_json::Value) -> bool {
 }
 
 fn render_step_finish(v: &serde_json::Value) -> String {
-    let reason = v.get("reason").and_then(|x| x.as_str()).unwrap_or("unknown");
+    let reason = v
+        .get("reason")
+        .and_then(|x| x.as_str())
+        .unwrap_or("unknown");
     let reasoning_tokens = v
         .get("tokens")
         .and_then(|t| t.get("reasoning"))
@@ -629,7 +636,7 @@ mod tests {
 
     #[test]
     fn ordering_watermark_uses_part_id_tie_breaker() {
-        let mut items = vec![
+        let mut items = [
             (100_i64, "prt_b".to_string()),
             (100_i64, "prt_a".to_string()),
             (101_i64, "prt_c".to_string()),
@@ -659,7 +666,11 @@ mod tests {
                 }}"#
             );
             let frames = part_to_frames(sid, 1_777_000_000_000 + i as i64, &part, None);
-            assert_eq!(frames.len(), 2, "every completed tool should emit use+result");
+            assert_eq!(
+                frames.len(),
+                2,
+                "every completed tool should emit use+result"
+            );
             if matches!(
                 frames.get(1),
                 Some(Frame::SessionContent {
@@ -723,8 +734,14 @@ mod tests {
                 )
             })
             .count();
-        assert_eq!(starts, 2, "two source sessions should map to two TP sessions");
-        assert_eq!(tool_results, 2, "each completed tool should preserve result frame");
+        assert_eq!(
+            starts, 2,
+            "two source sessions should map to two TP sessions"
+        );
+        assert_eq!(
+            tool_results, 2,
+            "each completed tool should preserve result frame"
+        );
     }
 
     fn seed_minimal_db(path: &std::path::Path) {

@@ -218,10 +218,7 @@ fn unregister_from_settings(
     };
     let cmd = command_path.display().to_string();
 
-    let Some(hooks_obj) = json
-        .get_mut("hooks")
-        .and_then(|v| v.as_object_mut())
-    else {
+    let Some(hooks_obj) = json.get_mut("hooks").and_then(|v| v.as_object_mut()) else {
         return Ok(false);
     };
     let Some(arr) = hooks_obj.get_mut(event).and_then(|v| v.as_array_mut()) else {
@@ -347,8 +344,7 @@ mod tests {
         let settings = tmp.path().join("settings.json");
         write_settings_file(&settings, "{}");
 
-        let report =
-            install_with(Some(hooks_dir.clone()), Some(settings.clone()), false).unwrap();
+        let report = install_with(Some(hooks_dir.clone()), Some(settings.clone()), false).unwrap();
         assert!(report.settings_updated);
 
         let body = std::fs::read_to_string(&settings).unwrap();
@@ -358,7 +354,10 @@ mod tests {
         let arr = ss.as_array().unwrap();
         assert_eq!(arr.len(), 1);
         let cmd = arr[0]["hooks"][0]["command"].as_str().unwrap();
-        assert_eq!(cmd, hooks_dir.join(SESSION_START_HOOK_NAME).to_string_lossy());
+        assert_eq!(
+            cmd,
+            hooks_dir.join(SESSION_START_HOOK_NAME).to_string_lossy()
+        );
         // Stop should NOT be registered — Claude Code fires it every turn.
         assert!(json["hooks"].get("Stop").is_none());
     }
@@ -396,8 +395,7 @@ mod tests {
         write_settings_file(&settings, "{}");
 
         install_with(Some(hooks_dir.clone()), Some(settings.clone()), false).unwrap();
-        let r2 =
-            install_with(Some(hooks_dir.clone()), Some(settings.clone()), false).unwrap();
+        let r2 = install_with(Some(hooks_dir.clone()), Some(settings.clone()), false).unwrap();
         assert!(!r2.settings_updated, "second install must not duplicate");
 
         let json: serde_json::Value =

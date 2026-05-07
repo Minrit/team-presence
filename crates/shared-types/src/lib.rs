@@ -174,7 +174,13 @@ mod tests {
             "started_at":"2026-04-18T00:00:00Z"
         }"#;
         let f: Frame = serde_json::from_str(json).unwrap();
-        assert!(matches!(f, Frame::SessionStart { cli: AgentKind::Cursor, .. }));
+        assert!(matches!(
+            f,
+            Frame::SessionStart {
+                cli: AgentKind::Cursor,
+                ..
+            }
+        ));
     }
 
     #[test]

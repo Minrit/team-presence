@@ -10,7 +10,12 @@ use team_presence_shared_types::{AgentKind, Frame};
 use tokio::sync::mpsc;
 
 use crate::capture::{
-    hook_socket, opencode::OpenCodeTailer, session_uuid, transcript::Tailer, HookEvent,
+    codex::{default_history_path, default_state_db_path, CodexTailer},
+    hook_socket,
+    opencode::OpenCodeTailer,
+    session_uuid,
+    transcript::Tailer,
+    HookEvent,
 };
 use crate::config;
 use crate::credentials::Credentials;
@@ -21,6 +26,8 @@ use crate::ws_client;
 const FRAME_CHANNEL_CAPACITY: usize = 8192;
 
 pub async fn run(creds: Credentials, agent_kind: AgentKind) -> anyhow::Result<()> {
+    config::save_agent_kind(agent_kind)?;
+
     let socket_path = config::hook_socket_path();
     let listener = hook_socket::bind(&socket_path)?;
     let (hook_tx, mut hook_rx) = mpsc::channel::<HookEvent>(64);
@@ -77,8 +84,12 @@ pub async fn run(creds: Credentials, agent_kind: AgentKind) -> anyhow::Result<()
         "listening for hook events"
     );
 
-    if matches!(agent_kind, AgentKind::Codex | AgentKind::OpenCode) {
-        spawn_opencode_tailer(agent_kind, frame_tx.clone(), sessions.clone());
+    match agent_kind {
+        AgentKind::Codex => spawn_codex_tailer(frame_tx.clone(), sessions.clone()),
+        AgentKind::OpenCode => {
+            spawn_opencode_tailer(agent_kind, frame_tx.clone(), sessions.clone())
+        }
+        _ => {}
     }
 
     while let Some(evt) = hook_rx.recv().await {
@@ -222,6 +233,25 @@ fn spawn_opencode_tailer(
             tracing::warn!(
                 component = "collector.start",
                 phase = "opencode_tailer_err",
+                error = %e,
+            );
+        }
+    });
+}
+
+fn spawn_codex_tailer(frame_tx: mpsc::Sender<Frame>, sessions: ActiveSessions) {
+    let gated_tx = spawn_mute_gate(frame_tx);
+    let tailer = CodexTailer::new(
+        default_state_db_path(),
+        default_history_path(),
+        gated_tx,
+        sessions,
+    );
+    tokio::spawn(async move {
+        if let Err(e) = tailer.run().await {
+            tracing::warn!(
+                component = "collector.start",
+                phase = "codex_tailer_err",
                 error = %e,
             );
         }

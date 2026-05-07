@@ -5,6 +5,7 @@
 //! consumer that prints to stdout is wired into `start::run_offline` so the
 //! capture path can be exercised without Unit 7.
 
+pub mod codex;
 pub mod hook_socket;
 pub mod opencode;
 pub mod transcript;

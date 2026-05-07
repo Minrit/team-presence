@@ -198,9 +198,7 @@ pub async fn create_relation(
     kind: RelationKind,
 ) -> Result<StoryRelation, AppError> {
     if from == to {
-        return Err(AppError::BadRequest(
-            "story cannot block itself".into(),
-        ));
+        return Err(AppError::BadRequest("story cannot block itself".into()));
     }
 
     sqlx::query_as::<_, StoryRelation>(
@@ -214,14 +212,10 @@ pub async fn create_relation(
     .fetch_one(db)
     .await
     .map_err(|e| match e {
-        sqlx::Error::Database(ref db_err)
-            if db_err.code().as_deref() == Some("23505") =>
-        {
+        sqlx::Error::Database(ref db_err) if db_err.code().as_deref() == Some("23505") => {
             AppError::BadRequest("relation already exists".into())
         }
-        sqlx::Error::Database(ref db_err)
-            if db_err.code().as_deref() == Some("23503") =>
-        {
+        sqlx::Error::Database(ref db_err) if db_err.code().as_deref() == Some("23503") => {
             AppError::BadRequest("related story not found".into())
         }
         other => other.into(),
@@ -246,10 +240,7 @@ pub async fn delete_relation(
     Ok(res.rows_affected() > 0)
 }
 
-pub async fn relations_for(
-    db: &PgPool,
-    story_id: Uuid,
-) -> Result<Vec<StoryRelation>, AppError> {
+pub async fn relations_for(db: &PgPool, story_id: Uuid) -> Result<Vec<StoryRelation>, AppError> {
     sqlx::query_as::<_, StoryRelation>(
         r#"SELECT * FROM story_relations
            WHERE from_story_id = $1 OR to_story_id = $1

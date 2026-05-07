@@ -10,9 +10,7 @@ use super::model::{
     CreateRelationRequest, CreateStoryRequest, ListActivityQuery, ListStoriesQuery,
     PatchStoryRequest, RelationKind, Story, StoryActivity, StoryRelation, StoryStatus,
 };
-use super::repo::{
-    self, BRANCH_MAX_BYTES, FIELD_MAX_BYTES, NAME_MAX_BYTES, PR_REF_MAX_BYTES,
-};
+use super::repo::{self, BRANCH_MAX_BYTES, FIELD_MAX_BYTES, NAME_MAX_BYTES, PR_REF_MAX_BYTES};
 use crate::{auth::model::Identity, error::AppError, state::AppState};
 
 pub async fn create(
@@ -356,17 +354,12 @@ fn normalize_acceptance(v: Option<JsonValue>) -> Result<JsonValue, AppError> {
         Some(JsonValue::Array(items)) => {
             let mut out = Vec::with_capacity(items.len());
             for item in items {
-                let obj = item
-                    .as_object()
-                    .ok_or_else(|| AppError::BadRequest(
-                        "acceptance_criteria items must be objects".into(),
-                    ))?;
-                let text = obj
-                    .get("text")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| AppError::BadRequest(
-                        "acceptance_criteria item missing text".into(),
-                    ))?;
+                let obj = item.as_object().ok_or_else(|| {
+                    AppError::BadRequest("acceptance_criteria items must be objects".into())
+                })?;
+                let text = obj.get("text").and_then(|v| v.as_str()).ok_or_else(|| {
+                    AppError::BadRequest("acceptance_criteria item missing text".into())
+                })?;
                 let done = obj.get("done").and_then(|v| v.as_bool()).unwrap_or(false);
                 if text.len() > 2000 {
                     return Err(AppError::BadRequest(

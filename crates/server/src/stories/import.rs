@@ -15,7 +15,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::model::{Story, StoryStatus};
-use super::repo::{self, FIELD_MAX_BYTES as DESCRIPTION_MAX_BYTES, NAME_MAX_BYTES as TITLE_MAX_BYTES};
+use super::repo::{
+    self, FIELD_MAX_BYTES as DESCRIPTION_MAX_BYTES, NAME_MAX_BYTES as TITLE_MAX_BYTES,
+};
 use crate::error::AppError;
 
 /// File size cap. Mirrors `DESCRIPTION_MAX_BYTES` from Unit 3 so an imported
@@ -112,9 +114,7 @@ pub fn map_status(raw: &str) -> (StoryStatus, bool) {
             (StoryStatus::InProgress, true)
         }
         "blocked" => (StoryStatus::Blocked, true),
-        "review" | "in_review" | "in-review" | "in review" | "pr" => {
-            (StoryStatus::Review, true)
-        }
+        "review" | "in_review" | "in-review" | "in review" | "pr" => (StoryStatus::Review, true),
         "done" | "complete" | "completed" | "closed" | "finished" | "resolved" => {
             (StoryStatus::Done, true)
         }
@@ -223,7 +223,7 @@ pub fn scan_dir(dir: &Path) -> std::io::Result<ScanResult> {
 
 #[derive(Debug)]
 pub enum ApplyOutcome {
-    Created(Story),
+    Created(Box<Story>),
     SkippedDuplicate { title: String },
 }
 
@@ -272,7 +272,7 @@ pub async fn apply_one(
         None,
     )
     .await?;
-    Ok(ApplyOutcome::Created(story))
+    Ok(ApplyOutcome::Created(Box::new(story)))
 }
 
 pub async fn resolve_user_by_email(db: &PgPool, email: &str) -> Result<Option<Uuid>, AppError> {

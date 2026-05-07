@@ -51,8 +51,7 @@ pub fn build_router(state: AppState) -> Router {
         // Story relations (Unit 10)
         .route(
             "/api/v1/stories/:id/relations",
-            get(stories::handlers::list_relations)
-                .post(stories::handlers::create_relation),
+            get(stories::handlers::list_relations).post(stories::handlers::create_relation),
         )
         .route(
             "/api/v1/stories/:id/relations/:target",

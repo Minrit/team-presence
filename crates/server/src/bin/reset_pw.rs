@@ -13,8 +13,12 @@ use argon2::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let mut args = std::env::args().skip(1);
-    let email = args.next().ok_or_else(|| anyhow::anyhow!("email required"))?;
-    let pw = args.next().ok_or_else(|| anyhow::anyhow!("password required"))?;
+    let email = args
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("email required"))?;
+    let pw = args
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("password required"))?;
 
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://tp:tp@localhost:5433/team_presence".into());

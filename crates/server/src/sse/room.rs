@@ -34,6 +34,9 @@ const XREAD_BLOCK_MS: usize = 2_000;
 const KEEPALIVE_EVERY: Duration = Duration::from_secs(15);
 const BACKFILL_PAGE: usize = 1_000;
 
+type StreamEntry = (String, Vec<(String, String)>);
+type XreadStream = (String, Vec<StreamEntry>);
+
 pub async fn handler(
     State(state): State<AppState>,
     Path(session_id): Path<Uuid>,
@@ -80,7 +83,7 @@ pub async fn handler(
         // current first entry is strictly after that cursor, client missed trimmed
         // content → tell them to wipe their buffer and re-fetch.
         if cursor != "0" {
-            let first: redis::RedisResult<Vec<(String, Vec<(String, String)>)>> =
+            let first: redis::RedisResult<Vec<StreamEntry>> =
                 redis::cmd("XRANGE").arg(&key).arg("-").arg("+").arg("COUNT").arg(1)
                     .query_async(&mut conn).await;
             if let Ok(entries) = first {
@@ -100,7 +103,7 @@ pub async fn handler(
             } else {
                 format!("({cursor}")
             };
-            let res: redis::RedisResult<Vec<(String, Vec<(String, String)>)>> =
+            let res: redis::RedisResult<Vec<StreamEntry>> =
                 redis::cmd("XRANGE").arg(&key).arg(&start).arg("+")
                     .arg("COUNT").arg(BACKFILL_PAGE)
                     .query_async(&mut conn).await;
@@ -132,9 +135,7 @@ pub async fn handler(
         // Tail loop: XREAD BLOCK short, emit keep-alive on empty ticks.
         let last_keepalive = std::time::Instant::now();
         loop {
-            let res: redis::RedisResult<
-                Option<Vec<(String, Vec<(String, Vec<(String, String)>)>)>>,
-            > = redis::cmd("XREAD")
+            let res: redis::RedisResult<Option<Vec<XreadStream>>> = redis::cmd("XREAD")
                 .arg("BLOCK").arg(XREAD_BLOCK_MS)
                 .arg("COUNT").arg(BACKFILL_PAGE)
                 .arg("STREAMS").arg(&key).arg(&cursor)

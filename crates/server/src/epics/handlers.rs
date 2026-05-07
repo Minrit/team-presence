@@ -14,10 +14,9 @@ pub async fn list(
     State(state): State<AppState>,
     Extension(_identity): Extension<Identity>,
 ) -> Result<Json<Vec<Epic>>, AppError> {
-    let rows: Vec<Epic> =
-        sqlx::query_as::<_, Epic>("SELECT * FROM epics ORDER BY name ASC")
-            .fetch_all(&state.db)
-            .await?;
+    let rows: Vec<Epic> = sqlx::query_as::<_, Epic>("SELECT * FROM epics ORDER BY name ASC")
+        .fetch_all(&state.db)
+        .await?;
     Ok(Json(rows))
 }
 
@@ -106,13 +105,10 @@ pub async fn delete(
 fn validate_color(c: &str) -> Result<(), AppError> {
     // Accept `#RRGGBB` only to keep the token surface small.
     let bytes = c.as_bytes();
-    let ok = bytes.len() == 7
-        && bytes[0] == b'#'
-        && bytes[1..].iter().all(|b| b.is_ascii_hexdigit());
+    let ok =
+        bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(|b| b.is_ascii_hexdigit());
     if !ok {
-        return Err(AppError::BadRequest(
-            "color must be #RRGGBB hex".into(),
-        ));
+        return Err(AppError::BadRequest("color must be #RRGGBB hex".into()));
     }
     Ok(())
 }

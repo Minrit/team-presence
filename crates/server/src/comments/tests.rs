@@ -2,8 +2,7 @@ use super::model::{CreateCommentRequest, PatchCommentRequest};
 
 #[test]
 fn create_parses_body() {
-    let req: CreateCommentRequest =
-        serde_json::from_str(r#"{"body":"hello story"}"#).unwrap();
+    let req: CreateCommentRequest = serde_json::from_str(r#"{"body":"hello story"}"#).unwrap();
     assert_eq!(req.body, "hello story");
 }
 
@@ -15,8 +14,7 @@ fn create_rejects_wrong_shape() {
 
 #[test]
 fn patch_parses_body() {
-    let req: PatchCommentRequest =
-        serde_json::from_str(r#"{"body":"edited"}"#).unwrap();
+    let req: PatchCommentRequest = serde_json::from_str(r#"{"body":"edited"}"#).unwrap();
     assert_eq!(req.body, "edited");
 }
 

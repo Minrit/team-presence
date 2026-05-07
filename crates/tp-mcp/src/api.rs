@@ -64,7 +64,8 @@ impl ApiClient {
 
     /// Look up the authenticated user's UUID via `/api/v1/auth/me`.
     pub async fn me(&self) -> McpResult<MeResponse> {
-        self.request_json(Method::GET, "/api/v1/auth/me", None).await
+        self.request_json(Method::GET, "/api/v1/auth/me", None)
+            .await
     }
 
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> McpResult<T> {

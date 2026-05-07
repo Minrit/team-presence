@@ -27,6 +27,7 @@ use crate::error::{McpError, McpResult};
 #[derive(Clone)]
 pub struct TpMcp {
     pub api: Option<ApiClient>,
+    #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
 }
 
@@ -263,11 +264,15 @@ impl TpMcp {
     ) -> Result<CallToolResult, ErrorData> {
         let api = self.api_or_err().map_err(ErrorData::from)?;
         let sprint_id = match args.sprint {
-            Some(ref s) if !s.is_empty() => Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let epic_id = match args.epic {
-            Some(ref s) if !s.is_empty() => Some(resolve_epic(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_epic(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let mut q = Vec::<(String, String)>::new();
@@ -293,7 +298,10 @@ impl TpMcp {
             format!("/api/v1/stories?{}", qs.join("&"))
         };
         let v: Value = api.get(&path).await.map_err(ErrorData::from)?;
-        ok_text(&format!("stories: {}", v.as_array().map(|a| a.len()).unwrap_or(0)), &v)
+        ok_text(
+            &format!("stories: {}", v.as_array().map(|a| a.len()).unwrap_or(0)),
+            &v,
+        )
     }
 
     #[tool(
@@ -320,11 +328,15 @@ impl TpMcp {
     ) -> Result<CallToolResult, ErrorData> {
         let api = self.api_or_err().map_err(ErrorData::from)?;
         let epic_id = match args.epic {
-            Some(ref s) if !s.is_empty() => Some(resolve_epic(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_epic(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let sprint_id = match args.sprint {
-            Some(ref s) if !s.is_empty() => Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let mut body = json!({
@@ -351,7 +363,10 @@ impl TpMcp {
         if let Some(p) = args.pr_ref {
             body["pr_ref"] = Value::String(p);
         }
-        let v: Value = api.post("/api/v1/stories", &body).await.map_err(ErrorData::from)?;
+        let v: Value = api
+            .post("/api/v1/stories", &body)
+            .await
+            .map_err(ErrorData::from)?;
         ok_text("created:", &v)
     }
 
@@ -364,11 +379,15 @@ impl TpMcp {
     ) -> Result<CallToolResult, ErrorData> {
         let api = self.api_or_err().map_err(ErrorData::from)?;
         let epic_id = match args.epic {
-            Some(ref s) if !s.is_empty() => Some(resolve_epic(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_epic(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let sprint_id = match args.sprint {
-            Some(ref s) if !s.is_empty() => Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?),
+            Some(ref s) if !s.is_empty() => {
+                Some(resolve_sprint(api, s).await.map_err(ErrorData::from)?)
+            }
             _ => None,
         };
         let mut body = json!({});
@@ -418,10 +437,7 @@ impl TpMcp {
             )
             .await
             .map_err(ErrorData::from)?;
-        ok_text(
-            &format!("moved {} → {}:", args.id, args.status),
-            &v,
-        )
+        ok_text(&format!("moved {} → {}:", args.id, args.status), &v)
     }
 
     #[tool(
@@ -507,7 +523,9 @@ impl TpMcp {
         Parameters(args): Parameters<AcEditArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         let api = self.api_or_err().map_err(ErrorData::from)?;
-        let mut ac = load_ac(api, &args.story_id).await.map_err(ErrorData::from)?;
+        let mut ac = load_ac(api, &args.story_id)
+            .await
+            .map_err(ErrorData::from)?;
         if args.index >= ac.len() {
             return Err(McpError::BadInput(format!(
                 "invalid_index {} (story has {} items)",
@@ -533,7 +551,9 @@ impl TpMcp {
         Parameters(args): Parameters<AcIndexArgs>,
     ) -> Result<CallToolResult, ErrorData> {
         let api = self.api_or_err().map_err(ErrorData::from)?;
-        let mut ac = load_ac(api, &args.story_id).await.map_err(ErrorData::from)?;
+        let mut ac = load_ac(api, &args.story_id)
+            .await
+            .map_err(ErrorData::from)?;
         if args.index >= ac.len() {
             return Err(McpError::BadInput(format!(
                 "invalid_index {} (story has {} items)",
@@ -665,7 +685,11 @@ impl TpMcp {
         // Aggregate.
         let mut summary = Vec::new();
         for sp in sprints.as_array().cloned().unwrap_or_default() {
-            let sid = sp.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let sid = sp
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
             let mut total = 0i64;
             let mut done = 0i64;
             let mut count = 0usize;
@@ -798,17 +822,18 @@ impl TpMcp {
         use team_presence_collector::client::ApiClient as CollectorApi;
         use team_presence_collector::credentials::{save, Credentials};
 
-        let api = CollectorApi::new(&args.server).map_err(|e| {
-            McpError::BadInput(format!("invalid server url: {e}"))
-        })?;
+        let api = CollectorApi::new(&args.server)
+            .map_err(|e| McpError::BadInput(format!("invalid server url: {e}")))?;
         let login = api
             .login(&args.email, &args.password)
             .await
             .map_err(|e| McpError::Other(format!("login failed: {e}")))?;
 
-        let name = args.collector_name.clone().or_else(hostname).unwrap_or_else(|| {
-            format!("{}-mcp", args.email.split('@').next().unwrap_or("agent"))
-        });
+        let name = args
+            .collector_name
+            .clone()
+            .or_else(hostname)
+            .unwrap_or_else(|| format!("{}-mcp", args.email.split('@').next().unwrap_or("agent")));
         let mint = api
             .mint_collector_token(&login.access_token, &name)
             .await
@@ -864,23 +889,33 @@ impl TpMcp {
                 if let Some(id) = report.collector_id {
                     lines.push(format!("collector_id={id}"));
                 }
-                lines.push("agent_mode=opencode".to_string());
+                lines.push(format!("agent_mode={}", report.agent_kind.as_str()));
                 lines.push(format!("muted={}", report.muted));
                 lines.push(format!("socket={}", report.socket_path.display()));
-                lines.push(format!("opencode_db={}", report.opencode_db.path.display()));
                 lines.push(format!(
-                    "opencode_db_state={}",
+                    "{}={}",
+                    report.opencode_db.label,
+                    report.opencode_db.path.display()
+                ));
+                lines.push(format!(
+                    "{}_state={}",
+                    report.opencode_db.label,
                     report.opencode_db.state.as_str()
                 ));
                 lines.push(format!(
-                    "opencode_last_event_at={}",
+                    "{}_last_event_at={}",
+                    report.opencode_db.label,
                     report
                         .opencode_db
                         .last_event_at
                         .map(|v| v.to_rfc3339())
                         .unwrap_or_else(|| "-".to_string())
                 ));
-                if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+                if let Some(hint) = report
+                    .opencode_db
+                    .state
+                    .hint(report.opencode_db.label, &report.opencode_db.path)
+                {
                     lines.push(format!("hint={hint}"));
                 }
                 ok_msg(lines.join("\n"))
@@ -908,16 +943,22 @@ impl TpMcp {
                         "logged_out"
                     }
                 ));
-                lines.push("agent_mode=opencode".to_string());
+                lines.push(format!("agent_mode={}", report.agent_kind.as_str()));
                 lines.push(format!("muted={}", report.muted));
                 lines.push(format!("socket={}", report.socket_path.display()));
-                lines.push(format!("opencode_db={}", report.opencode_db.path.display()));
                 lines.push(format!(
-                    "opencode_db_state={}",
+                    "{}={}",
+                    report.opencode_db.label,
+                    report.opencode_db.path.display()
+                ));
+                lines.push(format!(
+                    "{}_state={}",
+                    report.opencode_db.label,
                     report.opencode_db.state.as_str()
                 ));
                 lines.push(format!(
-                    "opencode_last_event_at={}",
+                    "{}_last_event_at={}",
+                    report.opencode_db.label,
                     report
                         .opencode_db
                         .last_event_at
@@ -933,11 +974,18 @@ impl TpMcp {
                             .to_string(),
                     );
                 }
-                if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+                if let Some(hint) = report
+                    .opencode_db
+                    .state
+                    .hint(report.opencode_db.label, &report.opencode_db.path)
+                {
                     ok = false;
                     lines.push(format!("fix={hint}"));
                 }
-                lines.push(format!("doctor_status={}", if ok { "ok" } else { "degraded" }));
+                lines.push(format!(
+                    "doctor_status={}",
+                    if ok { "ok" } else { "degraded" }
+                ));
                 ok_msg(lines.join("\n"))
             }
             Err(e) => ok_msg(format!("doctor=collector\ndoctor_status=error\nreason={e}")),
@@ -1057,9 +1105,7 @@ async fn resolve_sprint(api: &ApiClient, hint: &str) -> McpResult<String> {
             b.get("start_date")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
-                .cmp(
-                    a.get("start_date").and_then(|v| v.as_str()).unwrap_or(""),
-                )
+                .cmp(a.get("start_date").and_then(|v| v.as_str()).unwrap_or(""))
         });
         let latest = items
             .first()

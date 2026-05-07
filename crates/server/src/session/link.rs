@@ -86,11 +86,7 @@ mod tests {
 
     #[test]
     fn multiple_sources_deduped_preserving_first_seen() {
-        let got = extract_tokens([
-            "feat/STORY-1-x",
-            "/home/user/work/STORY-1",
-            "feat/STORY-2",
-        ]);
+        let got = extract_tokens(["feat/STORY-1-x", "/home/user/work/STORY-1", "feat/STORY-2"]);
         assert_eq!(got, vec!["STORY-1", "STORY-2"]);
     }
 

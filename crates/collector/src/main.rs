@@ -102,15 +102,27 @@ fn cmd_status() -> anyhow::Result<()> {
     println!("config:    {}", report.config_dir.display());
     println!("fallback:  {}", report.fallback_path.display());
     println!("socket:    {}", report.socket_path.display());
-    println!("agent:     opencode");
-    println!("opencode_db: {}", report.opencode_db.path.display());
-    println!("opencode_db_state: {}", report.opencode_db.state.as_str());
+    println!("agent:     {}", report.agent_kind.as_str());
+    println!(
+        "{}: {}",
+        report.opencode_db.label,
+        report.opencode_db.path.display()
+    );
+    println!(
+        "{}_state: {}",
+        report.opencode_db.label,
+        report.opencode_db.state.as_str()
+    );
     match report.opencode_db.last_event_at {
-        Some(ts) => println!("opencode_last_event_at: {ts}"),
-        None => println!("opencode_last_event_at: -"),
+        Some(ts) => println!("{}_last_event_at: {ts}", report.opencode_db.label),
+        None => println!("{}_last_event_at: -", report.opencode_db.label),
     }
-    if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
-        println!("opencode_hint: {hint}");
+    if let Some(hint) = report
+        .opencode_db
+        .state
+        .hint(report.opencode_db.label, &report.opencode_db.path)
+    {
+        println!("{}_hint: {hint}", report.opencode_db.label);
     }
     Ok(())
 }
@@ -118,27 +130,54 @@ fn cmd_status() -> anyhow::Result<()> {
 fn cmd_doctor() -> anyhow::Result<()> {
     let report = diagnostics::collect_status()?;
     println!("doctor: collector local diagnostics");
-    println!("status: {}", if report.logged_in { "logged_in" } else { "logged_out" });
+    println!(
+        "status: {}",
+        if report.logged_in {
+            "logged_in"
+        } else {
+            "logged_out"
+        }
+    );
     if report.logged_in {
         println!("server: {}", report.server.as_deref().unwrap_or("?"));
-        println!("collector_id: {}", report.collector_id.as_deref().unwrap_or("?"));
+        println!(
+            "collector_id: {}",
+            report.collector_id.as_deref().unwrap_or("?")
+        );
     } else {
         println!("hint: run `team-presence login --server <url> --email <you>` first");
     }
-    println!("agent_mode: opencode");
+    println!("agent_mode: {}", report.agent_kind.as_str());
     println!("muted: {}", report.muted);
     println!("socket: {}", report.socket_path.display());
-    println!("opencode_db: {}", report.opencode_db.path.display());
-    println!("opencode_db_state: {}", report.opencode_db.state.as_str());
+    println!(
+        "{}: {}",
+        report.opencode_db.label,
+        report.opencode_db.path.display()
+    );
+    println!(
+        "{}_state: {}",
+        report.opencode_db.label,
+        report.opencode_db.state.as_str()
+    );
     if let Some(ts) = report.opencode_db.last_event_at {
-        println!("opencode_last_event_at: {ts}");
+        println!("{}_last_event_at: {ts}", report.opencode_db.label);
     } else {
-        println!("opencode_last_event_at: -");
+        println!("{}_last_event_at: -", report.opencode_db.label);
     }
-    if let Some(hint) = report.opencode_db.state.hint(&report.opencode_db.path) {
+    if let Some(hint) = report
+        .opencode_db
+        .state
+        .hint(report.opencode_db.label, &report.opencode_db.path)
+    {
         println!("fix: {hint}");
     }
-    if !report.logged_in || !matches!(report.opencode_db.state, diagnostics::OpenCodeDbState::Readable) {
+    if !report.logged_in
+        || !matches!(
+            report.opencode_db.state,
+            diagnostics::OpenCodeDbState::Readable
+        )
+    {
         std::process::exit(2);
     }
     println!("doctor: ok");

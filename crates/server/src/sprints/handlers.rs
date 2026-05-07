@@ -36,7 +36,9 @@ pub async fn get_one(
     Extension(_identity): Extension<Identity>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Sprint>, AppError> {
-    Ok(Json(repo::get(&state.db, id).await?.ok_or(AppError::NotFound)?))
+    Ok(Json(
+        repo::get(&state.db, id).await?.ok_or(AppError::NotFound)?,
+    ))
 }
 
 pub async fn patch(

@@ -61,11 +61,12 @@ pub async fn revoke(
     Extension(_identity): Extension<Identity>,
     Path(id): Path<Uuid>,
 ) -> Result<(), AppError> {
-    let result =
-        sqlx::query("UPDATE collector_tokens SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL")
-            .bind(id)
-            .execute(&state.db)
-            .await?;
+    let result = sqlx::query(
+        "UPDATE collector_tokens SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL",
+    )
+    .bind(id)
+    .execute(&state.db)
+    .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound);

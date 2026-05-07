@@ -118,9 +118,11 @@ async fn fanout_publish_reaches_subscriber() {
     };
     emit_frame(&client, sid, &f, None).await;
 
-    let got =
-        tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await;
-    assert!(got.is_ok() && got.unwrap().is_some(), "subscriber got no message");
+    let got = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await;
+    assert!(
+        got.is_ok() && got.unwrap().is_some(),
+        "subscriber got no message"
+    );
 
     // Cleanup.
     let mut conn = client

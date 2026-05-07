@@ -100,17 +100,15 @@ fn patch_epic_branch_pr_tristate() {
 
 #[test]
 fn create_accepts_title_alias_for_name() {
-    let req: CreateStoryRequest =
-        serde_json::from_str(r#"{"title":"legacy client"}"#).unwrap();
+    let req: CreateStoryRequest = serde_json::from_str(r#"{"title":"legacy client"}"#).unwrap();
     assert_eq!(req.name.as_deref(), Some("legacy client"));
 }
 
 #[test]
 fn create_accepts_ac_as_array_or_string() {
-    let req: CreateStoryRequest = serde_json::from_str(
-        r#"{"name":"s","acceptance_criteria":[{"text":"x","done":false}]}"#,
-    )
-    .unwrap();
+    let req: CreateStoryRequest =
+        serde_json::from_str(r#"{"name":"s","acceptance_criteria":[{"text":"x","done":false}]}"#)
+            .unwrap();
     assert!(req.acceptance_criteria.as_ref().unwrap().is_array());
 
     let req: CreateStoryRequest =
@@ -129,10 +127,9 @@ fn priority_serde() {
 
 #[test]
 fn create_relation_request_parses() {
-    let req: CreateRelationRequest = serde_json::from_str(
-        r#"{"kind":"blocks","to":"00000000-0000-0000-0000-000000000099"}"#,
-    )
-    .unwrap();
+    let req: CreateRelationRequest =
+        serde_json::from_str(r#"{"kind":"blocks","to":"00000000-0000-0000-0000-000000000099"}"#)
+            .unwrap();
     assert_eq!(req.kind, RelationKind::Blocks);
 }
 
